@@ -1,0 +1,28 @@
+
+# Python virtual environment
+.venv/
+venv/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Raw assessment materials and student submissions
+data/raw/
+data/processed/
+
+# Notebook-generated checkpoints
+.ipynb_checkpoints/
+
+# Editor and operating-system files
+.vscode/
+.DS_Store
+Thumbs.db
