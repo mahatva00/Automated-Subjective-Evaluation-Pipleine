@@ -1,4 +1,3 @@
-
 import argparse
 import hashlib
 import json
@@ -22,25 +21,22 @@ def source_to_text(source):
     return None
 
 def extract_filename_metadata(path):
-    tokens = path.stem.split("_")
-    roll_index = None
-    roll_no = None
+    match = re.search(
+        r"(?<![A-Za-z0-9])(\d{2}[A-Za-z]{2,}\d{3,})(?![A-Za-z0-9])",
+        path.stem,
+        re.IGNORECASE
+    )
 
-    for index, token in enumerate(tokens):
-        if ROLL_PATTERN.fullmatch(token):
-            roll_index = index
-            roll_no = token
-            break
-
-    if roll_index is None:
+    if not match:
         return {
             "student_roll_no": None,
             "course_name": None,
             "assessment_name": None
         }, ["Could not identify roll number using the configured filename pattern."]
 
-    course = "_".join(tokens[:roll_index]) or None
-    assessment = "_".join(tokens[roll_index + 1:]) or None
+    roll_no = match.group(1)
+    course = path.stem[:match.start()].rstrip("_- ") or None
+    assessment = path.stem[match.end():].lstrip("_- ") or None
     diagnostics = []
 
     if course is None:
@@ -90,7 +86,12 @@ def make_segment(cell, index):
         "outputs": outputs,
         "attachments": cell.get("attachments", {}),
         "semantic_role": "unclassified",
-        "extraction_status": "success" if not diagnostics else "warning",
+        "extraction_status": (
+            "partial"
+            if source_to_text(cell.get("source", [])) is None
+            or not isinstance(cell.get("outputs", []), list)
+            else "success"
+        ),
         "diagnostics": diagnostics,
         "original_cell": cell
     }
@@ -158,7 +159,12 @@ def parse_notebook(path, input_root):
                 diagnostics.append(f"Cell {index}: {message}")
 
         record["submission"]["extraction_status"] = (
-            "partial" if diagnostics else "success"
+            "partial"
+            if any(
+                segment["extraction_status"] in {"partial", "failed"}
+                for segment in record["segments"]
+            )
+            else "success"
         )
 
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as error:
