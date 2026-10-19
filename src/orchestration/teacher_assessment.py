@@ -304,7 +304,8 @@ def run_teacher_assessment(input_dir: str | Path, output_dir: str | Path | None 
         raise ValueError(f"Question parser recognized no questions or standalone tasks. Diagnostic report: {run_dir / 'RUN_REPORT.json'}")
     qmap_out = run_dir / "intermediate" / "question_map.json"
     write_json(qmap_out, question_map)
-    requirements = extract_atomic_requirements(question_map)
+    # Do not turn question-paper preamble instructions into assessable requirements.
+    requirements = extract_atomic_requirements({**question_map, "global_instructions": []})
     req_out = run_dir / "intermediate" / "requirements_base" / f"{qp_path.stem}.requirements.json"
     write_json(req_out, requirements)
     stages.append({"stage": "question_mapping_and_requirement_extraction", "status": "completed",

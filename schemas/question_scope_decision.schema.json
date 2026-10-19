@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Question Scope Decision",
+  "type": "object",
+  "required": [
+    "scope_decision_version",
+    "document_id",
+    "chunk_id",
+    "start_char",
+    "end_char",
+    "text_sha256",
+    "scope_status",
+    "annotation_spans_to_create",
+    "training_labels_to_create",
+    "must_be_excluded_from_downstream",
+    "human_review_status"
+  ],
+  "properties": {
+    "scope_decision_version": {
+      "const": "1.0.0"
+    },
+    "document_id": {
+      "type": "string"
+    },
+    "source_annotation_filename": {
+      "type": "string"
+    },
+    "source_coverage_filename": {
+      "type": "string"
+    },
+    "chunk_id": {
+      "type": "string"
+    },
+    "start_char": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "end_char": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "text_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "scope_status": {
+      "enum": [
+        "in_scope",
+        "out_of_scope",
+        "mixed",
+        "pending"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "annotation_spans_to_create": {
+      "type": "boolean"
+    },
+    "training_labels_to_create": {
+      "type": "boolean"
+    },
+    "must_be_excluded_from_downstream": {
+      "type": "boolean"
+    },
+    "human_review_status": {
+      "enum": [
+        "proposed_scope_decision_pending_confirmation",
+        "reviewed_scope_decision"
+      ]
+    }
+  }
+}

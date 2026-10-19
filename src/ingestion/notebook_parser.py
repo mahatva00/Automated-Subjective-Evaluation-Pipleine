@@ -5,6 +5,27 @@ import re
 from pathlib import Path
 
 ROLL_PATTERN = re.compile(r"^\d{2}[A-Za-z]{2,}\d{3,}$", re.IGNORECASE)
+QUESTION_HEADING_RE = re.compile(
+    r"^\s*(?:#{1,6}\s*)?(?:question(?:\s+no\.?)?|q)\s*[:#.\-]?\s*"
+    r"(?P<number>\d{1,3})(?:\s*[:.)\-]\s*|\s+)(?P<title>.*\S)?\s*$",
+    re.IGNORECASE,
+)
+NUMERIC_QUESTION_HEADING_RE = re.compile(
+    r"^\s*#{1,6}\s*(?P<number>\d{1,3})\s*[.)\-:]\s*(?P<title>.*\S)\s*$"
+)
+AI_LOG_RE = re.compile(
+    r"(?im)^\s*(?:#{1,6}\s*)?(?:ai\s*(?:log|usage|assistance|tools?)|"
+    r"ai[-\s]?generated|my\s+use|tools?\s+used|"
+    r"(?:no|not|without)\s+(?:any\s+)?ai(?:\s+tools?)?\b|"
+    r"ai\s+prompt\b)|"
+    r"\b(?:i|we)\s+(?:used|did\s+not\s+use|didn't\s+use)\s+"
+    r"(?:any\s+)?(?:ai|chatgpt|gemini|ollama|copilot)\b",
+)
+QUESTION_COPY_RE = re.compile(
+    r"(?im)^\s*(?:#{1,6}\s*)?(?:\([a-z]\)|[a-z][.)])\s+|"
+    r"^\s*(?:#{1,6}\s*)?(?:[A-Z]\.)?\s*Experiment\s+\d+\b|"
+    r"\[\s*\d+(?:\.\d+)?\s*marks?\s*\]",
+)
 
 def sha256_file(path):
     digest = hashlib.sha256()
@@ -19,6 +40,60 @@ def source_to_text(source):
     if isinstance(source, list) and all(isinstance(x, str) for x in source):
         return "".join(source)
     return None
+
+
+def _output_to_text(outputs):
+    parts = []
+    if not isinstance(outputs, list):
+        return ""
+    for output in outputs:
+        if not isinstance(output, dict):
+            continue
+        for key in ("text", "data"):
+            value = output.get(key)
+            if isinstance(value, str) and value.strip():
+                parts.append(value)
+                break
+            if isinstance(value, list) and all(isinstance(item, str) for item in value):
+                text = "".join(value)
+                if text.strip():
+                    parts.append(text)
+                    break
+            if isinstance(value, dict):
+                rendered_text = ""
+                for mime in ("text/plain", "text/markdown", "text/html"):
+                    rendered = value.get(mime)
+                    if isinstance(rendered, str) and rendered.strip():
+                        rendered_text = rendered
+                        break
+                    if isinstance(rendered, list) and all(isinstance(item, str) for item in rendered):
+                        rendered_text = "".join(rendered)
+                        if rendered_text.strip():
+                            break
+                if rendered_text:
+                    parts.append(rendered_text)
+                    break
+    return "\n".join(parts).strip()
+
+
+def _question_number(text):
+    for line in text.splitlines():
+        for pattern in (QUESTION_HEADING_RE, NUMERIC_QUESTION_HEADING_RE):
+            match = pattern.match(line)
+            if match:
+                return str(int(match.group("number"))), (match.group("title") or "").strip()
+    return None, ""
+
+
+def _markdown_role(text):
+    number, title = _question_number(text)
+    if number is not None:
+        return "question", number, title
+    if AI_LOG_RE.search(text):
+        return "ai_log", None, ""
+    if QUESTION_COPY_RE.search(text):
+        return "question_copy", None, ""
+    return "explanation", None, ""
 
 def extract_filename_metadata(path):
     match = re.search(
@@ -50,7 +125,7 @@ def extract_filename_metadata(path):
         "assessment_name": assessment
     }, diagnostics
 
-def make_segment(cell, index):
+def make_segment(cell, index, current_question_number=None):
     diagnostics = []
     cell_type = cell.get("cell_type", "unknown")
     source = source_to_text(cell.get("source", []))
@@ -75,6 +150,43 @@ def make_segment(cell, index):
         if not isinstance(execution_count, int) or isinstance(execution_count, bool):
             diagnostics.append("Execution count has an unexpected type.")
 
+    if cell_type == "markdown":
+        role, heading_number, heading_title = _markdown_role(source)
+        question_number = heading_number or current_question_number
+    elif cell_type == "code":
+        role = "code"
+        heading_number = None
+        heading_title = ""
+        question_number = current_question_number
+    else:
+        role = "explanation"
+        heading_number = None
+        heading_title = ""
+        question_number = current_question_number
+
+    blocks = []
+    if source.strip() or role == "question":
+        blocks.append({
+            "block_id": f"cell_{index:04d}_{role}",
+            "component": role,
+            "question_number": question_number,
+            "source_text": source,
+            "output_text": "",
+            "source_location": {"cell_index": index},
+            "segment_id": f"cell_{index:04d}",
+        })
+    output_text = _output_to_text(outputs)
+    if cell_type == "code" and output_text:
+        blocks.append({
+            "block_id": f"cell_{index:04d}_output",
+            "component": "output",
+            "question_number": question_number,
+            "source_text": "",
+            "output_text": output_text,
+            "source_location": {"cell_index": index},
+            "segment_id": f"cell_{index:04d}",
+        })
+
     return {
         "segment_id": f"cell_{index:04d}",
         "position": index,
@@ -85,7 +197,11 @@ def make_segment(cell, index):
         "execution_count": execution_count,
         "outputs": outputs,
         "attachments": cell.get("attachments", {}),
-        "semantic_role": "unclassified",
+        "semantic_role": role,
+        "component_role": role,
+        "question_number": question_number,
+        "question_heading_title": heading_title,
+        "blocks": blocks,
         "extraction_status": (
             "partial"
             if source_to_text(cell.get("source", [])) is None
@@ -136,6 +252,8 @@ def parse_notebook(path, input_root):
         record["nbformat"] = notebook.get("nbformat")
         record["nbformat_minor"] = notebook.get("nbformat_minor")
 
+        question_blocks = {}
+        current_question_number = None
         for index, cell in enumerate(notebook["cells"]):
             if not isinstance(cell, dict):
                 diagnostics.append(f"Cell {index} is not a JSON object.")
@@ -152,12 +270,41 @@ def parse_notebook(path, input_root):
                 })
                 continue
 
-            segment = make_segment(cell, index)
+            segment = make_segment(cell, index, current_question_number)
+            if segment.get("component_role") == "question":
+                current_question_number = segment.get("question_number")
+                for block in segment.get("blocks", []):
+                    block["question_number"] = current_question_number
+            else:
+                for block in segment.get("blocks", []):
+                    block["question_number"] = current_question_number
+            for block in segment.get("blocks", []):
+                number = block.get("question_number")
+                if number is not None:
+                    question_blocks.setdefault(str(number), []).append(block)
+            segment["question_number"] = current_question_number
             record["segments"].append(segment)
 
             for message in segment["diagnostics"]:
                 diagnostics.append(f"Cell {index}: {message}")
 
+        record["question_blocks"] = question_blocks
+        record["component_contract"] = {
+            "scored_components": ["code", "output", "explanation"],
+            "optional_components": ["question", "question_copy", "ai_log"],
+            "ai_log_scored": False,
+        }
+        record["question_component_summary"] = {
+            number: {
+                "present_components": sorted({block["component"] for block in blocks}),
+                "missing_components": [
+                    component for component in ("code", "output", "explanation")
+                    if component not in {block["component"] for block in blocks}
+                ],
+                "ai_log_present": any(block["component"] == "ai_log" for block in blocks),
+            }
+            for number, blocks in question_blocks.items()
+        }
         record["submission"]["extraction_status"] = (
             "partial"
             if any(

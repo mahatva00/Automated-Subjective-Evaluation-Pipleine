@@ -1,0 +1,2436 @@
+{
+  "scope_version": "1.0.0",
+  "document_id": "fat-qp_5e15afa66bd0",
+  "annotation_filename": "FAT-QP.annotation.json",
+  "source_filename": "FAT-QP.pdf",
+  "source_text_sha256": "14f20cf60ef2a4f23637197c0b46a8d176216967a68e3518e9e7513f8d99a08b",
+  "text_length": 14695,
+  "policy_version": "question_scope_policy_v1.2",
+  "policy_summary": "Only content inside an actual question/subquestion is in scope. All other non-whitespace text is excluded from question requirement extraction and training loss.",
+  "segments": [
+    {
+      "segment_id": "scope_00001",
+      "start_char": 0,
+      "end_char": 64,
+      "text_sha256": "1099e73cb733b243737b33be3c6c0b320db11a276b3c9ba9412d473de0a1606c",
+      "text": "                             Final Assessment Test - April 2026\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00002",
+      "start_char": 64,
+      "end_char": 65,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00003",
+      "start_char": 65,
+      "end_char": 388,
+      "text_sha256": "9c177bfa04d30ff84490a3b724e30be5ab3bd8b0a594acb1700e0037f77e55c7",
+      "text": " Programme  M.C.A                                     Semester       Winter 2026\n Course      Machine Learning                        Code        PAMCA504\n Faculty      Dr.L.Jeganathan                               Slot/Class No.  L15L16/CH2025260500435\n Time        100 Minutes                            Max. Marks    50\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00004",
+      "start_char": 388,
+      "end_char": 391,
+      "text_sha256": "6a3cf5192354f71615ac51034b3e97c20eda99643fcaf5bbe6d41ad59bd12167",
+      "text": "\n\n\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00005",
+      "start_char": 391,
+      "end_char": 409,
+      "text_sha256": "e11d77fec7b2d1043077cc3f12ead6aa325111fb8b078369b7cf269c015e2848",
+      "text": "    Instructions:\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00006",
+      "start_char": 409,
+      "end_char": 410,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00007",
+      "start_char": 410,
+      "end_char": 942,
+      "text_sha256": "1fd3b58e1fd55d6c7482da71f1440f8b8806cb7ee2e55f2c8e00f07bf75d891d",
+      "text": "          If any assumptions are required, assume the same and mention those assumptions in the answer script.\n        Use of intelligence is highly appreciated.\n        Mention the question number in the text cell and next ’code cell’ shall contain the code related to the\n      respective question.\n         All your inferences shall be put in the text cell with the respective question number.\n       You are requested to convert interactive python note book (ipynb) into a pdf file (single file) and upload\n      in python\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00008",
+      "start_char": 942,
+      "end_char": 945,
+      "text_sha256": "6a3cf5192354f71615ac51034b3e97c20eda99643fcaf5bbe6d41ad59bd12167",
+      "text": "\n\n\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00009",
+      "start_char": 945,
+      "end_char": 959,
+      "text_sha256": "aa32cd296eb9bde7562f4eb5abba8965eeca356f35fc3abfea978409e817e19f",
+      "text": " Instructions\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00010",
+      "start_char": 959,
+      "end_char": 960,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00011",
+      "start_char": 960,
+      "end_char": 980,
+      "text_sha256": "0148ed157824e3b90ef46b7e139b81ab3d7931a2eb906dbb7ea069047ae046b5",
+      "text": "Platform and Format\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00012",
+      "start_char": 980,
+      "end_char": 981,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00013",
+      "start_char": 981,
+      "end_char": 1037,
+      "text_sha256": "b9760c460c0b5fe19a5cfa36d5a9841cab4ce0d81132700fb1001864b2aae25f",
+      "text": "        Use Jupyter Notebook for this lab examination.\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00014",
+      "start_char": 1037,
+      "end_char": 1038,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00015",
+      "start_char": 1038,
+      "end_char": 1066,
+      "text_sha256": "e86d5b39cc4d4b645b5cfc2dc5df190fe559ae13a83d861c4ef60b643fd1bccd",
+      "text": "        For each question:\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00016",
+      "start_char": 1066,
+      "end_char": 1067,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00017",
+      "start_char": 1067,
+      "end_char": 1133,
+      "text_sha256": "48bb97b7c08b6d5ba0135cd622998a6e2cfb4e0fda3265db5408b1ef982f3d0e",
+      "text": "      – Type the question exactly as given in the question paper.\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00018",
+      "start_char": 1133,
+      "end_char": 1134,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00019",
+      "start_char": 1134,
+      "end_char": 1207,
+      "text_sha256": "61b2581aa2b8bef3e5530fe9e8ec15c925fb5047dbee17c7bd02fa370d642dda",
+      "text": "      – Add explanation describing your logic required for the question.\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00020",
+      "start_char": 1207,
+      "end_char": 1208,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00021",
+      "start_char": 1208,
+      "end_char": 1258,
+      "text_sha256": "ab7edb8328b4d20a6b576b4a6fd6b05e4ec36c9552a95dc02b326869b15acaf9",
+      "text": "      – Write your code in the following cell(s).\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00022",
+      "start_char": 1258,
+      "end_char": 1259,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00023",
+      "start_char": 1259,
+      "end_char": 1333,
+      "text_sha256": "8f33e371bbc9ecb3d801cf9d34ea1239e425e2340d39eda62e0e6a8fcac9b5d7",
+      "text": "      – Display the output immediately below the corresponding code cell.\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00024",
+      "start_char": 1333,
+      "end_char": 1334,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00025",
+      "start_char": 1334,
+      "end_char": 1557,
+      "text_sha256": "ccaf3be112b97ec8ad83fff00e19874f745e4f2f62defda52deb47f894830e4e",
+      "text": "      – Add a subsection titled “AI Log for the question” after the output. “AI Log” should include:\n           *           The prompt(s) you used for the question.\n           *            Print  of the AI-tool’s response.\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00026",
+      "start_char": 1557,
+      "end_char": 1559,
+      "text_sha256": "75a11da44c802486bc6f65640aa48a730f0f684c5c07a42ba3cd1735eb3fb070",
+      "text": "\n\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00027",
+      "start_char": 1559,
+      "end_char": 1581,
+      "text_sha256": "e8a6b913b35b8f61a6b250f2b090817fd3a255cb56ac421cd7ff0508b338ee11",
+      "text": "    Submission Format\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00028",
+      "start_char": 1581,
+      "end_char": 1582,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00029",
+      "start_char": 1582,
+      "end_char": 1621,
+      "text_sha256": "f3ed07a9a608e6340525d4fab28c82a3070af1a934a9812ad83924e1e4c7446c",
+      "text": "         1. After completing the exam:\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00030",
+      "start_char": 1621,
+      "end_char": 1622,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00031",
+      "start_char": 1622,
+      "end_char": 1791,
+      "text_sha256": "e6ba5dfbb4e4232de0f1423be56fa4056c203f94444de2bc4c4da9993e978c61",
+      "text": "          – Save your notebook as a PDF showing questions, code, outputs, and explanations clearly.\n               *                  In Jupyter: File →Download as →PDF\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00032",
+      "start_char": 1791,
+      "end_char": 1792,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00033",
+      "start_char": 1792,
+      "end_char": 1823,
+      "text_sha256": "a84f6f9e77962a6a851c397f84ba3c22aea898c355cd668826d3e28ee4d3d8c1",
+      "text": "         2. Name your file as:\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00034",
+      "start_char": 1823,
+      "end_char": 1824,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00035",
+      "start_char": 1824,
+      "end_char": 1867,
+      "text_sha256": "61c587e6ba3a14d1149c25bbbdbb061617128892068e1ea8d83686772658180c",
+      "text": "         <RegisterNumber>_PAMCA504-W26.pdf\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00036",
+      "start_char": 1867,
+      "end_char": 1868,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00037",
+      "start_char": 1868,
+      "end_char": 1944,
+      "text_sha256": "7fa8f251998320bbed6f1cf2e40c5a8e0f2f668f66b0202cbc804dcb1026e9e4",
+      "text": "         3. Upload the single PDF file through the link provided in MS-Team\n",
+      "page_numbers": [
+        1
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00038",
+      "start_char": 1944,
+      "end_char": 1946,
+      "text_sha256": "f36a1756634f1e6665ec124d5d9c8b79ee8a971ddd2cdeadde5ee7ab4ae791cc",
+      "text": "\f\n",
+      "page_numbers": [],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00039",
+      "start_char": 1946,
+      "end_char": 1979,
+      "text_sha256": "fb0c3a82dea140500c97cdce779932822b8ccf3947b8594c45f0a647757f5afb",
+      "text": "    Output and Code Requirements\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00040",
+      "start_char": 1979,
+      "end_char": 1980,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00041",
+      "start_char": 1980,
+      "end_char": 2065,
+      "text_sha256": "f0d73c039b497b435b9220424d0788dd3c446de2aa8b42cc73f21c10a291e8be",
+      "text": "      – Submissions containing only outputs without code will be treated as invalid.\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00042",
+      "start_char": 2065,
+      "end_char": 2066,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00043",
+      "start_char": 2066,
+      "end_char": 2147,
+      "text_sha256": "13edf2c8c377938cd0da47c6c18d3dd79a3f1e221fede126eefd3609eff57fb0",
+      "text": "      – Code, output, and explanation,AI-log must be clearly visible in the PDF.\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00044",
+      "start_char": 2147,
+      "end_char": 2148,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00045",
+      "start_char": 2148,
+      "end_char": 2239,
+      "text_sha256": "a3450aaf7b46219f404583f3354d033ecbf170cc1c7b2ef84a39217dfd824902",
+      "text": "      – Full marks will be awarded only if both code and corresponding output are present.\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00046",
+      "start_char": 2239,
+      "end_char": 2240,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00047",
+      "start_char": 2240,
+      "end_char": 2319,
+      "text_sha256": "cb1e694e6c5441e0e9c8038d3d72e255545178a29753eb7f9806b6cdbaf87051",
+      "text": "    For every question, Jupyter notebook, should have the following components\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00048",
+      "start_char": 2319,
+      "end_char": 2320,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00049",
+      "start_char": 2320,
+      "end_char": 2362,
+      "text_sha256": "86189daf857ea75f4bd27b4986bbaea21a20ca47332421a11fc281590b9ce3ea",
+      "text": "      – Question No, Question description\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00050",
+      "start_char": 2362,
+      "end_char": 2363,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00051",
+      "start_char": 2363,
+      "end_char": 2395,
+      "text_sha256": "16b40960a9584b1b921701224bc6d889b9fc25f4c5e92865e486cbf9f7cf3ef5",
+      "text": "      – Explanation of the code\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00052",
+      "start_char": 2395,
+      "end_char": 2396,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00053",
+      "start_char": 2396,
+      "end_char": 2409,
+      "text_sha256": "1d52877fa720928f35bd2eed0a34c6e71c82f390caac282e7a43eacd1924a973",
+      "text": "      – Code\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00054",
+      "start_char": 2409,
+      "end_char": 2410,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00055",
+      "start_char": 2410,
+      "end_char": 2425,
+      "text_sha256": "54004f1df331ed4a9245984633ea0ec31797dc0c41d443f712565410a3fbae39",
+      "text": "      – Output\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00056",
+      "start_char": 2425,
+      "end_char": 2426,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00057",
+      "start_char": 2426,
+      "end_char": 2454,
+      "text_sha256": "a8c9f72c102ebe89229da665f265ada46c289d0adb6f0c9ac47be88a1aeeb53e",
+      "text": "      – Details of AI usage\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00058",
+      "start_char": 2454,
+      "end_char": 2456,
+      "text_sha256": "75a11da44c802486bc6f65640aa48a730f0f684c5c07a42ba3cd1735eb3fb070",
+      "text": "\n\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00059",
+      "start_char": 2456,
+      "end_char": 2486,
+      "text_sha256": "d3f66bd137a412bbace82855f483ab08cedae8de626dd4b22eb0036bb496e08e",
+      "text": "    AI-Tool Usage and Logging\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00060",
+      "start_char": 2486,
+      "end_char": 2487,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00061",
+      "start_char": 2487,
+      "end_char": 2577,
+      "text_sha256": "664dac11266b9e849be7f9e290bfaf1c5cc97a148a016481b26e407f67901514",
+      "text": "         1. You may use AI tools only as assistive references, not for direct copy-paste.\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00062",
+      "start_char": 2577,
+      "end_char": 2578,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00063",
+      "start_char": 2578,
+      "end_char": 2634,
+      "text_sha256": "f7f58cc9fd65e341feffc5c53622768405b95509c8b2541d55d0bd41baf759e1",
+      "text": "         2. For each question, if you used any AI tool:\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00064",
+      "start_char": 2634,
+      "end_char": 2635,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00065",
+      "start_char": 2635,
+      "end_char": 2734,
+      "text_sha256": "04b99f82be0245db4cc9fbf952524e61f173da7340d75e889b55a8c82376790b",
+      "text": "          – The prompt(s) you used for the question.\n          – Print  of the AI-tool’s response.\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00066",
+      "start_char": 2734,
+      "end_char": 2735,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00067",
+      "start_char": 2735,
+      "end_char": 2763,
+      "text_sha256": "f25def6cf908e5d181ebc8032670841c29e07e5540937f8d2291ab3a4db33be3",
+      "text": "         3. Example format:\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00068",
+      "start_char": 2763,
+      "end_char": 2764,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00069",
+      "start_char": 2764,
+      "end_char": 3008,
+      "text_sha256": "b517f608dff34cabd26ba44e91c386d551ad6efaa7f954691e26df1c817323d1",
+      "text": "         AI Log for Question 3:\n         Prompt: Explain k-means clustering initialization.\n         AI Response: Described k-means++ method with sklearn example.\n         % My use: Adapted the code for the given dataset; changed n_clusters=4.\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00070",
+      "start_char": 3008,
+      "end_char": 3009,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00071",
+      "start_char": 3009,
+      "end_char": 3074,
+      "text_sha256": "bb67f22184412b477cf668d351d4b62fdc0e871b7b3c4267de9a663c36cc4544",
+      "text": "          If you did not use any AI tool for a question, write:\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00072",
+      "start_char": 3074,
+      "end_char": 3076,
+      "text_sha256": "75a11da44c802486bc6f65640aa48a730f0f684c5c07a42ba3cd1735eb3fb070",
+      "text": "\n\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00073",
+      "start_char": 3076,
+      "end_char": 3121,
+      "text_sha256": "f154e7b062ec31491e18e3dcb2028cf8a15ceb020509afcc0459cc2e3b64b49b",
+      "text": "     AI Log for Question 3: No AI tool used.\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00074",
+      "start_char": 3121,
+      "end_char": 3122,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00075",
+      "start_char": 3122,
+      "end_char": 3192,
+      "text_sha256": "976d7787697bbe059669ec79d90130aa20fe480de0291f51081a2d42592b1333",
+      "text": "        At the end of your notebook, include a final section titled:\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00076",
+      "start_char": 3192,
+      "end_char": 3194,
+      "text_sha256": "75a11da44c802486bc6f65640aa48a730f0f684c5c07a42ba3cd1735eb3fb070",
+      "text": "\n\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00077",
+      "start_char": 3194,
+      "end_char": 3226,
+      "text_sha256": "792bbbc215e5ebe8861a50e2bb86eb9903063381d524e7e68dd0104b35190153",
+      "text": "     Complete AI-Assistance Log\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00078",
+      "start_char": 3226,
+      "end_char": 3227,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00079",
+      "start_char": 3227,
+      "end_char": 3304,
+      "text_sha256": "78ba276e423d2d028c59756174033ef05cf36d02f9774c1604adf9dc7f1965cd",
+      "text": "       listing all prompts and corresponding responses used across the exam.\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00080",
+      "start_char": 3304,
+      "end_char": 3305,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00081",
+      "start_char": 3305,
+      "end_char": 3324,
+      "text_sha256": "479b2d255aaf97275f211ebc12425c995de8f7517af706df5239ea15a2927ec0",
+      "text": "Academic Integrity\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00082",
+      "start_char": 3324,
+      "end_char": 3325,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00083",
+      "start_char": 3325,
+      "end_char": 3450,
+      "text_sha256": "2d4ab7aa0538e3585fef6e0f4d10b5a40560a8d0cd1ea74a220894df21ab0e40",
+      "text": "        Submissions with fabricated outputs, copied code, or undeclared AI assistance will be treated\n      as malpractice.\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00084",
+      "start_char": 3450,
+      "end_char": 3451,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00085",
+      "start_char": 3451,
+      "end_char": 3524,
+      "text_sha256": "bf1a6380cf341d4be1119425741fd5851befe53ef8a493bdb6b2a1fbe91591a8",
+      "text": "        Your notebook must reflect your own understanding and analysis.\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00086",
+      "start_char": 3524,
+      "end_char": 3525,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00087",
+      "start_char": 3525,
+      "end_char": 3546,
+      "text_sha256": "f1d0ef67f4b551c2bd4f323b1c524fa627051705de24e07ff2a1e5b1fc77967b",
+      "text": "Submission Checklist\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00088",
+      "start_char": 3546,
+      "end_char": 3547,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00089",
+      "start_char": 3547,
+      "end_char": 3614,
+      "text_sha256": "126400437210a074af8c5c18c59cfa46e40667abee94946d8cd389cad58da730",
+      "text": "Before submitting, for each question, please ensure the following:\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00090",
+      "start_char": 3614,
+      "end_char": 3615,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00091",
+      "start_char": 3615,
+      "end_char": 3639,
+      "text_sha256": "eb688b101bb6c5c072811c53c1ac0d0ee3a6340d73be6379f13f4f43a45a0f3e",
+      "text": "        Question typed\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00092",
+      "start_char": 3639,
+      "end_char": 3640,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00093",
+      "start_char": 3640,
+      "end_char": 3662,
+      "text_sha256": "898d7516af7f9ea5397b3b40725ebeb4f9299e7789317fd3da10ade0f55a4e4e",
+      "text": "       Code included\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00094",
+      "start_char": 3662,
+      "end_char": 3663,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00095",
+      "start_char": 3663,
+      "end_char": 3687,
+      "text_sha256": "df0eea5b58e2372e8dfb90c31a727f0d4438c613703aead9cfe4373c3ad9cd10",
+      "text": "        Output visible\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00096",
+      "start_char": 3687,
+      "end_char": 3688,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00097",
+      "start_char": 3688,
+      "end_char": 3717,
+      "text_sha256": "be951196cb6253dc2e8ba8d07ec9b57ff8d0c4205dc69c3b3b441e246f69f564",
+      "text": "        Explanation written\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00098",
+      "start_char": 3717,
+      "end_char": 3719,
+      "text_sha256": "75a11da44c802486bc6f65640aa48a730f0f684c5c07a42ba3cd1735eb3fb070",
+      "text": "\n\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00099",
+      "start_char": 3719,
+      "end_char": 3768,
+      "text_sha256": "3e3463c4a740fbd173c0c273ef49e1ef2ecd8563ffcfad4c32d7d120c3ddbeff",
+      "text": "                                               2\n",
+      "page_numbers": [
+        2
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00100",
+      "start_char": 3768,
+      "end_char": 3770,
+      "text_sha256": "f36a1756634f1e6665ec124d5d9c8b79ee8a971ddd2cdeadde5ee7ab4ae791cc",
+      "text": "\f\n",
+      "page_numbers": [],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00101",
+      "start_char": 3770,
+      "end_char": 3807,
+      "text_sha256": "8555509336e9ac38d33f5d6b5738f49b921abe01bf32a867240c3d9cb41e1724",
+      "text": "        AI log (per question) added\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00102",
+      "start_char": 3807,
+      "end_char": 3808,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00103",
+      "start_char": 3808,
+      "end_char": 3850,
+      "text_sha256": "1db1deeb8225cff9f2cde07bf1c26e161b127cfc7f6457505209a2d03978ef7d",
+      "text": "        Saved and uploaded as single PDF\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00104",
+      "start_char": 3850,
+      "end_char": 3851,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00105",
+      "start_char": 3851,
+      "end_char": 4088,
+      "text_sha256": "a291853a8a835c81ba8d511ce7433170a77443503859c02aaaf3a467af3a4de8",
+      "text": "   You are provided with a dataset that bears your roll.no as the file-name of the dataset. Before the start\nof the examination, please check whether you have got a dataset which has your roll.no. Your data set is\nreferred as dataset D.\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q1_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q1_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00106",
+      "start_char": 4088,
+      "end_char": 4089,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00107",
+      "start_char": 4089,
+      "end_char": 4198,
+      "text_sha256": "f621e6dcc509a89c1ca99a6f257f460da9ad07332161d799b5d3491fa6c438db",
+      "text": "   1. Data Preprocessing (with the dataset D)                                                     [15 marks]\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q1_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q1_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00108",
+      "start_char": 4198,
+      "end_char": 4199,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00109",
+      "start_char": 4199,
+      "end_char": 4311,
+      "text_sha256": "815dc81312c2aee8e7a8196a7f4ac66a2a3d3b376c77063677d474d67f6f16b3",
+      "text": "       (a) Check the dimension and display the first 15 records of the dataset.                        [1 mark]\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q1_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q1_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00110",
+      "start_char": 4311,
+      "end_char": 4312,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00111",
+      "start_char": 4312,
+      "end_char": 4541,
+      "text_sha256": "94eaef87071831a686ea6cc9df3e66c70841cc60fa1031ef817bc420b271efa3",
+      "text": "      (b) Identify the NaN values in each of the input, output the number of NaN values in each of the input\n           attributes.                                                                                         [1 mark]\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q1_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q1_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00112",
+      "start_char": 4541,
+      "end_char": 4542,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00113",
+      "start_char": 4542,
+      "end_char": 4656,
+      "text_sha256": "e1e353557af595f86dddfa40db8776f078dcf067ff36fc822700686f9e7ea495",
+      "text": "       (c) Identify the attributes which follow normal distribution                                     [2 marks]\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q1_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q1_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00114",
+      "start_char": 4656,
+      "end_char": 4657,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00115",
+      "start_char": 4657,
+      "end_char": 4988,
+      "text_sha256": "49b6787c5e7fcec43c667d08ee373b5a694d226ec4f4f6d9f61de115be54ac19",
+      "text": "      (d) Do the imputation by replacing all the NaN values in an attribute with the mean of all the values of\n          that attribute or mode of all the values of that attribute. After executing the imputation, confirm\n          that the imputation gets reflected in the dataset with appropriate outputs.               [2 marks]\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q1_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q1_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00116",
+      "start_char": 4988,
+      "end_char": 4989,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00117",
+      "start_char": 4989,
+      "end_char": 5120,
+      "text_sha256": "fbc7128fc77f457067d0245a9599a0f0465ad2fd5caaa33e031cab850696a476",
+      "text": "       (e) Identify the outliers in each of the attribute and replace the outliers using the ‘capping process’.[2\n          marks]\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q1_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q1_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00118",
+      "start_char": 5120,
+      "end_char": 5121,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00119",
+      "start_char": 5121,
+      "end_char": 5229,
+      "text_sha256": "bb1bc834a442a57e70a7684886cca8bc47c778696b916e512fa8b57fc2361bb9",
+      "text": "        (f) Caluclate the Maximum and Minimum value for each of attributes of D.                   [1 mark]\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q1_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q1_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00120",
+      "start_char": 5229,
+      "end_char": 5230,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00121",
+      "start_char": 5230,
+      "end_char": 6122,
+      "text_sha256": "a998928f4a3f900988b22ce3bcfacd33b3e3e635f83ae7186b8fab6b21bcef01",
+      "text": "       (g) From the dataset D, prepare a new dataframe, called as the ‘D-test-data’, as follows:\n                          All the input attributes of D will be the columns of ‘D-test-data’.\n                          ’D-test-data’ will not have the target column of D\n                          ’D-test-data’ will have 15 rows.\n                       None of the values in any row of D-test-data will be as the rows of D.\n                               If (a1, a2, a3, a4, a5, a6, a7, a8, a9) is a row in D-test-data,with ai as the value in the Ai column\n                of D (i = 1 to 9), ai should not be present in the Ai column of D (in any row) and ai should\n             be between the maximum value of the entries in the Ai column and the minimum value of the\n                entries in the Ai column. For example, if (2, 3.1, 4.5, 5, 9, 0.1, 5, 8.1, 9.0) is a row in D-test-data,\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q1_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q1_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00122",
+      "start_char": 6122,
+      "end_char": 6809,
+      "text_sha256": "02a358694a7f65db796a15e999cb1d2ae52b11fb5179bfe32ce172da98ca1cac",
+      "text": "               there should not be any rows (excludng the value in target column of D) in D  , with the\n              corresponding values (2, 3.1, 4.5, 5, 9, 0.1, 5, 8.1, 9.0) and all the entries should be between the\n             max.value and the min.value of the respective columns in D\n                         In short, If you super-impose (place over) a row (a1, a2, a3, a4, a5, a6, a7, a8, a9) of D-test-data\n            on any row of D (with out the target column entry ), there should be a mismatch in all the\n               values (a, i is from 1 to 9)\n                                                                                                                [6 marks]\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q1_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q1_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00123",
+      "start_char": 6809,
+      "end_char": 6810,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00124",
+      "start_char": 6810,
+      "end_char": 6920,
+      "text_sha256": "249adf2985c93329cc32da242a52f9d3fb91c5a955a8377e13444db56db54929",
+      "text": "   2. Training the models                                                                          [25 marks]\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00125",
+      "start_char": 6920,
+      "end_char": 6921,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00126",
+      "start_char": 6921,
+      "end_char": 6994,
+      "text_sha256": "6199f362a87791115cd55f45e30ff7f8f45b498f2f37b1b42cfc0131a0ca8b97",
+      "text": "       (a) With 75% of the dataset D, conduct the following experiments.\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00127",
+      "start_char": 6994,
+      "end_char": 6995,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00128",
+      "start_char": 6995,
+      "end_char": 7838,
+      "text_sha256": "81d57b491d7a1ce243d2def4ccbafd9966505d572e4c82e6704783c3c3b89413",
+      "text": "                    i. Train a multiple linear regression model with a polynomial of degree 1 (with all the terms) by\n               considering all the input features of the dataset D and execute the following experiments E1,\n           E2 ,E3.                                                                                       [6 marks]\n             A. Experiment 1 (E1): Optimization strategy should be ‘Stochastic Gradient Descent’.\n                                 Compute the error in E1 due to the training data and the error due to validation data.\n                                   Based on the learning of your model, predict the output of the datapoints in ‘D-test-\n                     data’ and append a new column with the predicted output and name the column as\n                SGD. Print the D-test-data with the output.\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00129",
+      "start_char": 7838,
+      "end_char": 8334,
+      "text_sha256": "09d252350a478e6f6fced8a696c9ab7c6b87910dc98aa3a855182a315644c424",
+      "text": "              B. Experiment 2 (E2): Optimization strategy should be ‘Batch Gradient Descent’.\n                                 Compute the error in E2 due to the training data and the error due to validation data.\n                                   Based on the learning of your model, predict the output of the datapoints in ‘D-test-\n                     data’ and append a new column with the predicted output and name the column as\n               BGD. Print the D-test-data with the output.\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00130",
+      "start_char": 8334,
+      "end_char": 8336,
+      "text_sha256": "75a11da44c802486bc6f65640aa48a730f0f684c5c07a42ba3cd1735eb3fb070",
+      "text": "\n\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00131",
+      "start_char": 8336,
+      "end_char": 8385,
+      "text_sha256": "625257740c9fc43f9a94e6cae5cb5327665f2c47909baef2481c462631c53899",
+      "text": "                                               3\n",
+      "page_numbers": [
+        3
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00132",
+      "start_char": 8385,
+      "end_char": 8387,
+      "text_sha256": "f36a1756634f1e6665ec124d5d9c8b79ee8a971ddd2cdeadde5ee7ab4ae791cc",
+      "text": "\f\n",
+      "page_numbers": [],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00133",
+      "start_char": 8387,
+      "end_char": 9283,
+      "text_sha256": "a7d4b5a370c442238308f458936c75ad3a2d92df63f969e5a9539c9321403ebd",
+      "text": "C. Experiment 3 (E3): Optimization strategy should be ‘Mini-batch Gradient Descent’.\n       Compute the error in E3 due to the training data and the error due to validation data.\n        Based on the learning of your model, predict the output of the datapoints in ‘D-test-data’\n     and append a new column with the predicted output and name the column as MGD.\n      Print the D-test-data with the output.\nD. Experiment 4 (E4): Generate a new data set (D1) from the data set D such that D1 has\n    labled outputs where the labels (for the outputs)are assigned as follows.          [4 marks]\n        For the output values ≤0, assign the label Z\n        For the output values such that 0 < output value ≤10, assign the label B\n        For the output values such that 10 < output value ≤20, assign the label C.\n        For the output values such that 20 < output value ≤30, assign the label D\n",
+      "page_numbers": [
+        4
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00134",
+      "start_char": 9283,
+      "end_char": 10145,
+      "text_sha256": "973c433976998aa5bc13c908066b9902991a5f938dddbcc4666faf882fd72f23",
+      "text": "        For the output values > 30, assign the label E\n   Thus, D1 is obtained from D, just by replacing the values in the output column of D with\n   the respective labels assigned to them and all the values of all the other input attributes\n    of D will also be in D1.\nE. Experiment 5 (E5) : Generate a new data set D2 from D1 as described.          [5 marks]\n         Scale the attributes using standardisation scalar if the attributes follow normal distri-\n     bution and scale the attributes using normalization scalar if the attributes do not follow\n     normal distribution.\n        Check whether the data set is balanced or not. For a k-class dataset, each class shall\n     have approximately  k data points, where N is the total number of data points in the                   N\n      dataset D1. If the dataet is imbalanced, balance the dataset D1.\n",
+      "page_numbers": [
+        4
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00135",
+      "start_char": 10145,
+      "end_char": 11043,
+      "text_sha256": "802f82acdd57647cbcee862eae499e368387a79337332d5a14344f9c9918a558",
+      "text": "         After scaling the attributes and balancing the data set, Let us call the balanced and\n      standardised data set as D2.\n   You have to do any TWO EXPERIMENTS from E6,E7,E8             [6 marks]\nF. Experiment 6 (E6): Using the labled dataset D2, Train a logistic regression learning model\n    for classification\n        Generate the accuracy and the classification report on the learning of the logistic regres-\n      sion model.\n        Based on the learning of your model, predict the output of the datapoints in ‘D-test-\n      data’ and append a new column with the predicted output and name the output column\n      as LR . Print the D-test-data with the output.\nG. Experiment 7 (E7): Using the labled dataset D2, Train a tree-based non-parametric learn-\n    ing model for classification\n        Generate the accuracy and the classification report on the learning of the tree-based\n",
+      "page_numbers": [
+        4
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00136",
+      "start_char": 11043,
+      "end_char": 11939,
+      "text_sha256": "4a6fc088de4d0833225be030207ce55aa2cc7278680424fab18e6afb5eb7c5c1",
+      "text": "     model.\n        Based on the learning of your model, predict the output of the datapoints in ‘D-test-\n      data’ and append a new column with the predicted output and name the output column\n      as DT. Print the D-test-data with the output.\nH. Experiment 8 (E8): Train the SVM classifier with the data set D2, as follows.\n         Print the support vectors of the model.\n        Generate the accuracy and the classification report on the learning of the SVM model.\n        Based on the learning of your model, predict the output of the datapoints in ‘D-test-\n      data’ and append a new column with the predicted output and name the output column\n      as SVM . Print the D-test-data with the output.\n       Compute the accuracy measure ( with the validation data set) of the classifier.\n         Print the confusion matrix and generate the classification report of your experiment.\n",
+      "page_numbers": [
+        4
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00137",
+      "start_char": 11939,
+      "end_char": 12277,
+      "text_sha256": "97bad5c3b30ee4784d0a01721ceae2ac03de21071465c95b88a6cf346718a086",
+      "text": " I. Experiment 09 (E09): Remove the Target column of D2 and obtain a new data set D3.\n   Train the K-means clustering model with the data set D3.                         [4 marks]\n         Cluster the data set in to k-number of cluster where k is the optimum number of clusters\n      for the data set, as inferred from the elbow method.\n",
+      "page_numbers": [
+        4
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00138",
+      "start_char": 12277,
+      "end_char": 12279,
+      "text_sha256": "75a11da44c802486bc6f65640aa48a730f0f684c5c07a42ba3cd1735eb3fb070",
+      "text": "\n\n",
+      "page_numbers": [
+        4
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00139",
+      "start_char": 12279,
+      "end_char": 12315,
+      "text_sha256": "d6ef898dfc0a5f6507fffb9a259223f57d8d40eff64a189c65ce6fd83d7ee7cf",
+      "text": "                                  4\n",
+      "page_numbers": [
+        4
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00140",
+      "start_char": 12315,
+      "end_char": 12317,
+      "text_sha256": "f36a1756634f1e6665ec124d5d9c8b79ee8a971ddd2cdeadde5ee7ab4ae791cc",
+      "text": "\f\n",
+      "page_numbers": [],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00141",
+      "start_char": 12317,
+      "end_char": 12635,
+      "text_sha256": "252f3b77e670a48b508ee61a54804a136d1449acb0f233f8aa176b2b18733d43",
+      "text": "                          Identify the clusters to which each data point of validation data set belongs to.\n                         Print the centroid of each clusters and print the number of data points in each of the\n                cluster.\n                      Compute the Silhouette score of learning model.\n",
+      "page_numbers": [
+        5
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00142",
+      "start_char": 12635,
+      "end_char": 12636,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        5
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00143",
+      "start_char": 12636,
+      "end_char": 12738,
+      "text_sha256": "3f38467b45c43c9fe115e90307de516c20a1d0e47c4c2d3df2ac9b6f707001ff",
+      "text": "(b) Inferences Based on the experiments, answer the following:                             [10 marks]\n",
+      "page_numbers": [
+        5
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00144",
+      "start_char": 12738,
+      "end_char": 12739,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        5
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00145",
+      "start_char": 12739,
+      "end_char": 13554,
+      "text_sha256": "9748beed0820e1166961f5254df972504911be7340ff0ed986e9f5607864e4e2",
+      "text": "          i. Predicting the new output                                                                 [5 marks]\n        A. You have the test data set called: D-test-data. Earlier, You have predicted the value/class\n              for this test-data. Append the output E1,E2,E3, E6,E7,E8 (any two from E6,E7,E8) as\n            the last five columns of D-test-data. Now, the 10-th, 11-th, 12-th columns will be numerals\n          and the 13-th, 14-th columns are labels.\n        B. Change the numerals of 10-th, 11-th 12-th columns as labels, as done in the Experiment\n           E4.\n        C. Now, D-test-data will have only labels from 10-th column to the 14-th column and the first\n           9 columns are the input attributes.\n       D. Predict the new label for input (each row) of the D-test-data as follows.\n",
+      "page_numbers": [
+        5
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00146",
+      "start_char": 13554,
+      "end_char": 14147,
+      "text_sha256": "b35944b20334d0b37220a4a81c6942fa1fcba11af9c6601403122904cefd20a7",
+      "text": "                     New output of an input is the median of the labels in the columns from 10-th to 14-th\n             columns.\n                        For example, if an input has the labels: A,B,B,C,D, the new ouptut will be B.\n                      Append a new column called ’new-output’ for the dataset D-test-data and this column\n                will have the new-output of all the rows of D-test-data.\n                         Print the new-data-set which has 15 columns\n         ii. Record all the accuracy of all the experiments in the form of a tables as follows:     [5 marks]\n",
+      "page_numbers": [
+        5
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00147",
+      "start_char": 14147,
+      "end_char": 14148,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        5
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00148",
+      "start_char": 14148,
+      "end_char": 14532,
+      "text_sha256": "ac802e1fddf6113c1c0e41db18711ef8186768b5955aaa76580da45bf459e74c",
+      "text": "             ModelAccuracy                                Train data   Validation data\n              Experiment 1 (Regression in Stochastic mode)\n              Experiment 2 (Regression in Batch mode)\n              Experiment 3 (Regression in Mini-batch mode)\n              Experiment 6 (Logistic Regression)\n              Experiment 7 (Decision Tree)\n              Experiment 8 (SVM)\n",
+      "page_numbers": [
+        5
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00149",
+      "start_char": 14532,
+      "end_char": 14533,
+      "text_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "text": "\n",
+      "page_numbers": [
+        5
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00150",
+      "start_char": 14533,
+      "end_char": 14648,
+      "text_sha256": "78970dc4e45d9dbfb221a9ba5bafddaadfd862894d3ea4875a4fdabf2f399a9f",
+      "text": "       Based on the above table, Record your inferences (as much as you can) on all the above\n        exepriments.\n",
+      "page_numbers": [
+        5
+      ],
+      "scope_status": "in_scope",
+      "question_id": "q2_occurrence_1",
+      "reason": "Included under the user-specified boundary; assigned to q2_occurrence_1 as question content.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    },
+    {
+      "segment_id": "scope_00151",
+      "start_char": 14648,
+      "end_char": 14653,
+      "text_sha256": "7c370d9536d7d0d6a0f7cd7f9826692acd93e4fb05ba46f7b630b879740343d3",
+      "text": "\n\n\n\n\n",
+      "page_numbers": [
+        5
+      ],
+      "scope_status": "separator",
+      "question_id": null,
+      "reason": "Whitespace-only separator; no training labels.",
+      "review_status": "not_required",
+      "reviewer": "",
+      "review_date": ""
+    },
+    {
+      "segment_id": "scope_00152",
+      "start_char": 14653,
+      "end_char": 14695,
+      "text_sha256": "3d32ae14214f6f1cd1b0400190dd906883456134a49fc822ed5599b7fb9fca75",
+      "text": "                                         5",
+      "page_numbers": [
+        5
+      ],
+      "scope_status": "out_of_scope",
+      "question_id": null,
+      "reason": "Excluded under the user-specified boundary: content before physical TSV/Excel row 105 is outside question scope.",
+      "review_status": "reviewed",
+      "reviewer": "assistant_applied_user_scope_rule",
+      "review_date": "2026-10-13"
+    }
+  ]
+}

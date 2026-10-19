@@ -41,6 +41,27 @@ class RequirementExtractorTests(unittest.TestCase):
         part_requirements = result["questions"][0]["subparts"][0]["requirements"]
         self.assertEqual([r["atomic_text"] for r in part_requirements], ["Calculate accuracy", "plot the confusion matrix."])
 
+    def test_keeps_dependent_same_model_clause_together(self):
+        parsed = {
+            "schema_version": "1.0",
+            "source_filename": "dependent.pdf",
+            "global_instructions": [],
+            "questions": [{
+                "question_id": "q1_occurrence_1", "number": "1", "occurrence": 1,
+                "text": "1. Swap the training and test datasets and train the same model.",
+                "raw_lines": ["1. Swap the training and test datasets and train the same model."],
+                "source_pages": [1], "alternative_markers": [],
+                "subparts": [],
+            }],
+            "notes": [], "alternatives": [], "diagnostics": [],
+        }
+        result = extract_atomic_requirements(parsed)
+        requirements = result["questions"][0]["requirements"]
+        self.assertEqual(
+            [item["atomic_text"] for item in requirements],
+            ["Swap the training and test datasets and train the same model."],
+        )
+
     def test_parent_context_is_preserved_without_subpart_duplication(self):
         result = extract_atomic_requirements(self.parsed)
         parent_requirements = [

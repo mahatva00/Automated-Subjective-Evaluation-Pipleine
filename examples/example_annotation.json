@@ -1,0 +1,166 @@
+{
+  "schema_version": "1.0.0",
+  "document_id": "synthetic-sql-example-0001",
+  "source": {
+    "filename": "synthetic_example.pdf",
+    "format": "pdf",
+    "document_type": "question_paper",
+    "language": "en"
+  },
+  "text": "Question 1. Return the total sales for each customer using the provided orders table. Group the results by customer_id. Sort by total in descending order. Submit a SQL query. Submit a short explanation.",
+  "page_ranges": [
+    {
+      "source_segment_id": "page_0001",
+      "page_number": 1,
+      "sequence_index": 0,
+      "start_char": 0,
+      "end_char": 202,
+      "extraction_method": "synthetic",
+      "original_type": "pdf_page"
+    }
+  ],
+  "annotations": [
+    {
+      "annotation_id": "s_question_1",
+      "layer": "structure",
+      "label": "question_heading",
+      "start_char": 0,
+      "end_char": 11,
+      "text": "Question 1.",
+      "attributes": {},
+      "review_status": "reviewed",
+      "annotator_id": "synthetic-example"
+    },
+    {
+      "annotation_id": "s_question_body",
+      "layer": "structure",
+      "label": "question_body",
+      "start_char": 12,
+      "end_char": 202,
+      "text": "Return the total sales for each customer using the provided orders table. Group the results by customer_id. Sort by total in descending order. Submit a SQL query. Submit a short explanation.",
+      "attributes": {},
+      "review_status": "reviewed",
+      "annotator_id": "synthetic-example"
+    },
+    {
+      "annotation_id": "m_req_1",
+      "layer": "semantic",
+      "label": "requirement",
+      "start_char": 12,
+      "end_char": 85,
+      "text": "Return the total sales for each customer using the provided orders table.",
+      "attributes": {
+        "requirement_type": "action",
+        "atomicity": "atomic",
+        "assessment_relevance": "yes"
+      },
+      "review_status": "reviewed",
+      "annotator_id": "synthetic-example"
+    },
+    {
+      "annotation_id": "m_req_2",
+      "layer": "semantic",
+      "label": "requirement",
+      "start_char": 86,
+      "end_char": 119,
+      "text": "Group the results by customer_id.",
+      "attributes": {
+        "requirement_type": "constraint",
+        "atomicity": "atomic",
+        "assessment_relevance": "yes"
+      },
+      "review_status": "reviewed",
+      "annotator_id": "synthetic-example"
+    },
+    {
+      "annotation_id": "m_req_3",
+      "layer": "semantic",
+      "label": "requirement",
+      "start_char": 120,
+      "end_char": 154,
+      "text": "Sort by total in descending order.",
+      "attributes": {
+        "requirement_type": "constraint",
+        "atomicity": "atomic",
+        "assessment_relevance": "yes"
+      },
+      "review_status": "reviewed",
+      "annotator_id": "synthetic-example"
+    },
+    {
+      "annotation_id": "m_req_4",
+      "layer": "semantic",
+      "label": "requirement",
+      "start_char": 155,
+      "end_char": 174,
+      "text": "Submit a SQL query.",
+      "attributes": {
+        "requirement_type": "deliverable",
+        "atomicity": "atomic",
+        "assessment_relevance": "yes"
+      },
+      "review_status": "reviewed",
+      "annotator_id": "synthetic-example"
+    },
+    {
+      "annotation_id": "m_req_5",
+      "layer": "semantic",
+      "label": "requirement",
+      "start_char": 175,
+      "end_char": 202,
+      "text": "Submit a short explanation.",
+      "attributes": {
+        "requirement_type": "deliverable",
+        "atomicity": "atomic",
+        "assessment_relevance": "yes"
+      },
+      "review_status": "reviewed",
+      "annotator_id": "synthetic-example"
+    }
+  ],
+  "relations": [
+    {
+      "relation_id": "r1",
+      "source_annotation_id": "m_req_1",
+      "target_annotation_id": "s_question_1",
+      "type": "belongs_to",
+      "review_status": "reviewed"
+    },
+    {
+      "relation_id": "r2",
+      "source_annotation_id": "m_req_2",
+      "target_annotation_id": "s_question_1",
+      "type": "belongs_to",
+      "review_status": "reviewed"
+    },
+    {
+      "relation_id": "r3",
+      "source_annotation_id": "m_req_3",
+      "target_annotation_id": "s_question_1",
+      "type": "belongs_to",
+      "review_status": "reviewed"
+    },
+    {
+      "relation_id": "r4",
+      "source_annotation_id": "m_req_4",
+      "target_annotation_id": "s_question_1",
+      "type": "belongs_to",
+      "review_status": "reviewed"
+    },
+    {
+      "relation_id": "r5",
+      "source_annotation_id": "m_req_5",
+      "target_annotation_id": "s_question_1",
+      "type": "belongs_to",
+      "review_status": "reviewed"
+    }
+  ],
+  "annotation_metadata": {
+    "status": "example",
+    "guidelines_version": "1.0.0",
+    "annotator_ids": [
+      "synthetic-example"
+    ],
+    "notes": "Synthetic documentation example only. Never use as training or evaluation data."
+  }
+}

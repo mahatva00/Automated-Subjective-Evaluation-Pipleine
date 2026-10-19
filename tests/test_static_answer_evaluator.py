@@ -1,7 +1,11 @@
 import unittest
 from unittest.mock import patch
 from src.evaluation.static_answer_evaluator import (
+    build_question_component_payloads,
     select_evidence_blocks, validate_assessment, evaluate_evidence_map, GeminiClient
+)
+from src.evaluation.static_answer_evaluator import (
+    _evidence_diagnostic, normalize_assessment_response,
 )
 
 class FakeClient:
@@ -35,10 +39,270 @@ class StaticAnswerEvaluatorTests(unittest.TestCase):
                     "atomic_text":"Count the null values in each column.","requirement_type":"action",
                     "source_text":"Count the null values in each column."}
 
+    def test_component_payload_keeps_ai_log_separate_from_explanation(self):
+        evidence_map = {
+            "student_code_executed": False,
+            "questions": [{
+                "question_id": "q1",
+                "question_number": "1",
+                "question_title": "Data preparation",
+                "mapping_status": "evidence_found",
+                "missing_components": [],
+                "ai_log_present": True,
+                "component_blocks": {
+                    "question": [],
+                    "code": [{"block_id": "code1", "source_text": "df = load_data()"}],
+                    "output": [{"block_id": "out1", "output_text": "rows: 10"}],
+                    "explanation": [{"block_id": "exp1", "source_text": "I removed nulls."}],
+                    "ai_log": [{"block_id": "ai1", "source_text": "ChatGPT suggested this."}],
+                },
+                "requirements": [self.req],
+            }],
+        }
+        payload = build_question_component_payloads(evidence_map)
+        self.assertEqual(payload[0]["components"]["explanation"][0]["block_id"], "exp1")
+        self.assertEqual(payload[0]["components"]["ai_log"][0]["block_id"], "ai1")
+        self.assertFalse(payload[0]["ai_log_is_scoring_evidence"])
+        self.assertEqual(payload[0]["requirements"][0]["requirement_text"], self.req["atomic_text"])
+
+    def test_requirement_evidence_selection_uses_linked_code_blocks_only(self):
+        requirement = {
+            "requirement_id": "r1",
+            "atomic_text": "Prepare data.",
+            "linked_evidence_block_ids": ["code1", "code2"],
+        }
+        blocks = [
+            {"block_id": "code1", "segment_id": "cell1", "component": "code",
+             "segment_position": 1, "source_text": "prepare_data()", "output_text": ""},
+            {"block_id": "code1_output", "segment_id": "cell1", "component": "output",
+             "segment_position": 1, "source_text": "", "output_text": "prepared"},
+            {"block_id": "code1_explanation", "segment_id": "cell1", "component": "explanation",
+             "segment_position": 1, "source_text": "I prepared data.", "output_text": ""},
+        ]
+        selected, complete = select_evidence_blocks(requirement, blocks)
+        self.assertEqual(
+            [block["block_id"] for block in selected],
+            ["code1", "code1_output"],
+        )
+        self.assertTrue(complete)
+        self.assertNotIn("code1_explanation", [block["block_id"] for block in selected])
+
+    def test_selected_pdf_block_exposes_visual_evidence_as_auxiliary_context(self):
+        block = {
+            "block_id": "chart",
+            "segment_position": 1,
+            "source_text": "plt.legend()\nplt.xlabel('Index')",
+            "output_text": "",
+            "metadata": {
+                "image_evidence": [{
+                    "region_index": 1,
+                    "ocr_text": "Bar chart: x1 vs r Index",
+                    "ocr_confidence": 81.5,
+                    "is_authoritative": False,
+                }],
+            },
+        }
+        selected, _ = select_evidence_blocks(self.req, [block])
+        self.assertEqual(selected[0]["visual_evidence"][0]["ocr_text"], "Bar chart: x1 vs r Index")
+        self.assertFalse(selected[0]["visual_evidence"][0]["is_authoritative"])
+
+    def test_unlinked_code_requirement_recovers_same_question_code_and_output(self):
+        requirement = {
+            "requirement_id": "r-unlinked",
+            "atomic_text": "Predict the target output for an unknown input.",
+            "requirement_type": "deliverable",
+            "linked_evidence_block_ids": [],
+        }
+        blocks = [
+            {
+                "block_id": "prediction_code",
+                "segment_id": "cell1",
+                "segment_position": 1,
+                "component": "code",
+                "source_text": "prediction = model.predict(x_unknown)",
+                "output_text": "",
+            },
+            {
+                "block_id": "prediction_output",
+                "segment_id": "cell1",
+                "segment_position": 1,
+                "component": "output",
+                "source_text": "",
+                "output_text": "prediction: 42.5",
+            },
+            {
+                "block_id": "unrelated_explanation",
+                "segment_id": "cell2",
+                "segment_position": 2,
+                "component": "explanation",
+                "source_text": "The model was trained on the dataset.",
+                "output_text": "",
+            },
+        ]
+        selected, complete = select_evidence_blocks(requirement, blocks)
+        self.assertEqual(
+            [block["block_id"] for block in selected],
+            ["prediction_code", "prediction_output"],
+        )
+        self.assertFalse(complete)
+
+    def test_unlinked_visual_requirement_recovers_plot_code_and_image_metadata(self):
+        requirement = {
+            "requirement_id": "r-visual",
+            "atomic_text": "Draw a bar chart for each independent variable.",
+            "requirement_type": "deliverable",
+            "linked_evidence_block_ids": [],
+        }
+        blocks = [
+            {
+                "block_id": "plot_code",
+                "segment_id": "cell1",
+                "segment_position": 1,
+                "component": "code",
+                "source_text": "plt.bar(df.index, df['r'])\nplt.legend()",
+                "output_text": "",
+                "metadata": {
+                    "image_evidence": [{
+                        "region_index": 1,
+                        "ocr_text": "Bar chart",
+                        "is_authoritative": False,
+                    }],
+                },
+            },
+            {
+                "block_id": "plot_explanation",
+                "segment_id": "cell2",
+                "segment_position": 2,
+                "component": "explanation",
+                "source_text": "This chart compares the variables.",
+                "output_text": "",
+            },
+        ]
+        selected, complete = select_evidence_blocks(requirement, blocks)
+        self.assertEqual([block["block_id"] for block in selected], ["plot_code"])
+        self.assertEqual(selected[0]["visual_evidence"][0]["ocr_text"], "Bar chart")
+        self.assertFalse(complete)
+
+    def test_short_visual_requirement_inherits_parent_code_context(self):
+        requirement = {
+            "requirement_id": "r-axis",
+            "source_node_id": "q2_part_a_r5",
+            "atomic_text": "Clearly label the axes.",
+            "requirement_type": "action",
+            "linked_evidence_block_ids": [],
+        }
+        blocks = [
+            {
+                "block_id": "parent_plot",
+                "segment_id": "cell1",
+                "segment_position": 1,
+                "subquestion_anchor": "a",
+                "component": "code",
+                "source_text": "plt.plot(samples, train_error)\nplt.xlabel('samples')",
+                "output_text": "",
+            },
+        ]
+        selected, complete = select_evidence_blocks(requirement, blocks)
+        self.assertEqual([block["block_id"] for block in selected], ["parent_plot"])
+        self.assertFalse(complete)
+
+    def test_unlinked_inference_requirement_uses_explanation_and_output_only(self):
+        requirement = {
+            "requirement_id": "r-inference",
+            "atomic_text": "Conclude which experiment learned the coefficients better.",
+            "requirement_type": "reasoning",
+            "linked_evidence_block_ids": [],
+        }
+        blocks = [
+            {
+                "block_id": "inference_code",
+                "segment_id": "cell1",
+                "segment_position": 1,
+                "component": "code",
+                "source_text": "best = min(errors)",
+                "output_text": "",
+            },
+            {
+                "block_id": "inference_output",
+                "segment_id": "cell1",
+                "segment_position": 1,
+                "component": "output",
+                "source_text": "",
+                "output_text": "E2 has the lowest coefficient error.",
+            },
+            {
+                "block_id": "inference_explanation",
+                "segment_id": "cell2",
+                "segment_position": 2,
+                "component": "explanation",
+                "source_text": "E2 learned the coefficients better because its error is lowest.",
+                "output_text": "",
+            },
+        ]
+        selected, complete = select_evidence_blocks(requirement, blocks)
+        self.assertEqual(
+            [block["block_id"] for block in selected],
+            ["inference_output", "inference_explanation"],
+        )
+        self.assertFalse(complete)
+
+    def test_evidence_bundle_is_included_for_unmapped_requirement_context(self):
+        requirement = {
+            "requirement_id": "r-bundle",
+            "atomic_text": "Explain the result.",
+            "requirement_type": "reasoning",
+            "linked_evidence_block_ids": [],
+        }
+        blocks = [
+            {
+                "block_id": "out1", "segment_id": "cell1", "segment_position": 1,
+                "component": "output", "source_text": "", "output_text": "result",
+            },
+            {
+                "block_id": "exp1", "segment_id": "cell2", "segment_position": 2,
+                "component": "explanation", "source_text": "The result is explained.",
+                "output_text": "",
+            },
+        ]
+        selected, complete = select_evidence_blocks(requirement, blocks)
+        self.assertFalse(complete)
+        self.assertEqual(
+            {block["component"] for block in selected},
+            {"output", "explanation"},
+        )
+
     def test_selects_relevant_block_and_marks_partial_context(self):
         selected, complete = select_evidence_blocks(self.req, self.blocks, max_blocks=1)
         self.assertEqual(selected[0]["block_id"], "b1")
         self.assertFalse(complete)
+
+    def test_truncated_block_includes_relevant_excerpt_and_pdf_metadata(self):
+        source = "unrelated preface\n" + ("unrelated words " * 100) + "Count null values"
+        block = {
+            "block_id": "pdf-page-8",
+            "segment_id": "page_0008",
+            "segment_position": 8,
+            "segment_type": "pdf_page",
+            "source_text": source,
+            "page_number": 8,
+            "metadata": {
+                "extraction_method": "pdf_text+image_ocr",
+                "extraction_status": "partial",
+                "embedded_image_count": 1,
+            },
+        }
+
+        selected, context_complete = select_evidence_blocks(
+            self.req, [block], max_block_chars=100
+        )
+
+        self.assertFalse(context_complete)
+        self.assertEqual(selected[0]["page_number"], 8)
+        self.assertIn("null values", selected[0]["source_text"])
+        self.assertIn("EXCERPT", selected[0]["source_text"])
+        self.assertEqual(
+            selected[0]["metadata"]["extraction_method"], "pdf_text+image_ocr"
+        )
 
     def test_complete_requires_exact_evidence_quote(self):
         result = validate_assessment({
@@ -56,6 +320,178 @@ class StaticAnswerEvaluatorTests(unittest.TestCase):
         }, self.req, self.blocks, {"b1"}, False, "test")
         self.assertEqual(result["status"], "needs_review")
         self.assertTrue(result["validation_errors"])
+
+    def test_diagnostic_classifies_invalid_model_quote(self):
+        result = validate_assessment({
+            "requirement_id": "r1", "status": "complete",
+            "rationale": "Evidence found.", "confidence": 0.9,
+            "evidence_sufficient": True,
+            "evidence": [{"block_id": "b1", "quote": "invented text", "purpose": "Claim."}],
+        }, self.req, self.blocks, {"b1"}, True, "test")
+        diagnostic = _evidence_diagnostic(self.req, self.blocks[:1], True, result)
+        self.assertEqual(diagnostic["category"], "invalid_model_quote")
+
+    def test_diagnostic_classifies_invalid_model_status(self):
+        result = validate_assessment({
+            "requirement_id": "r1", "status": "unsupported",
+            "rationale": "Unknown status.", "confidence": 0.9,
+            "evidence_sufficient": True, "evidence": [],
+        }, self.req, self.blocks, set(), True, "test")
+        diagnostic = _evidence_diagnostic(self.req, self.blocks[:1], True, result)
+        self.assertEqual(diagnostic["category"], "invalid_model_status")
+
+    def test_normalize_assessment_response_rejects_unknown_duplicates_and_exposes_missing(self):
+        normalized = normalize_assessment_response(
+            {
+                "assessments": [
+                    {"requirement_id": "r1", "status": "complete"},
+                    {"requirement_id": "r1", "status": "partial"},
+                    {"requirement_id": "unknown", "status": "complete"},
+                ]
+            },
+            ["r1", "r2"],
+        )
+        self.assertEqual(normalized["assessments"][0]["status"], "complete")
+        self.assertTrue(normalized["assessments"][1]["_response_missing"])
+
+    def test_diagnostic_classifies_missing_model_assessment(self):
+        result = validate_assessment(
+            {"requirement_id": "r1", "_response_missing": True},
+            self.req, self.blocks, set(), True, "test",
+        )
+        diagnostic = _evidence_diagnostic(self.req, self.blocks[:1], True, result)
+        self.assertEqual(diagnostic["category"], "missing_model_assessment")
+
+    def test_diagnostic_classifies_ambiguous_judgment(self):
+        requirement = dict(self.req)
+        requirement["linked_code_block_ids"] = ["b1"]
+        result = {
+            "status": "needs_review",
+            "validation_errors": [],
+        }
+        diagnostic = _evidence_diagnostic(requirement, self.blocks[:1], True, result)
+        self.assertEqual(diagnostic["category"], "ambiguous_model_judgment")
+
+    def test_diagnostic_classifies_missing_required_component(self):
+        requirement = dict(self.req)
+        requirement["mapping_diagnostics"] = {"category": "true_no_evidence"}
+        diagnostic = _evidence_diagnostic(requirement, [], False, {"validation_errors": []})
+        self.assertEqual(diagnostic["category"], "missing_required_component")
+        self.assertIn("missing_required_component", diagnostic["context_reasons"])
+
+    def test_diagnostic_explains_truncated_and_omitted_context(self):
+        requirement = dict(self.req)
+        requirement["evidence_bundle"] = {"block_ids": ["b1", "b2"]}
+        selected = [
+            {
+                "block_id": "b1",
+                "component": "code",
+                "source_text": "df.isnull() [SOURCE TEXT EXCERPT; ORIGINAL CONTENT OMITTED]",
+                "output_text": "",
+            },
+        ]
+        diagnostic = _evidence_diagnostic(
+            requirement, selected, False, {"validation_errors": []}
+        )
+        self.assertIn("evidence_truncated", diagnostic["context_reasons"])
+        self.assertIn("bundle_blocks_omitted", diagnostic["context_reasons"])
+        self.assertEqual(diagnostic["omitted_bundle_block_ids"], ["b2"])
+
+    def test_context_cap_retains_output_and_explanation_components(self):
+        requirement = {
+            "requirement_id": "r-context",
+            "atomic_text": "Explain the result.",
+            "linked_evidence_block_ids": ["code1", "code2"],
+            "evidence_bundle": {"block_ids": ["code1", "code2", "out1", "exp1"]},
+        }
+        blocks = [
+            {"block_id": "code1", "component": "code", "segment_position": 1,
+             "source_text": "first()", "output_text": ""},
+            {"block_id": "code2", "component": "code", "segment_position": 2,
+             "source_text": "second()", "output_text": ""},
+            {"block_id": "out1", "component": "output", "segment_position": 2,
+             "source_text": "", "output_text": "result"},
+            {"block_id": "exp1", "component": "explanation", "segment_position": 3,
+             "source_text": "The result is stable.", "output_text": ""},
+        ]
+        selected, complete = select_evidence_blocks(requirement, blocks, max_blocks=3)
+        self.assertFalse(complete)
+        self.assertEqual(
+            {block["component"] for block in selected},
+            {"code", "output", "explanation"},
+        )
+        self.assertIn("code1", [block["block_id"] for block in selected])
+
+    def test_invalid_quote_does_not_discard_other_valid_evidence(self):
+        result = validate_assessment({
+            "requirement_id": "r1", "status": "partial",
+            "rationale": "The first block supports part of the requirement.",
+            "confidence": 0.7, "evidence_sufficient": True,
+            "evidence": [
+                {"block_id": "b1", "quote": "df.isnull().sum()", "purpose": "Valid code."},
+                {"block_id": "b2", "quote": "invented text", "purpose": "Invalid quote."},
+            ],
+        }, self.req, self.blocks, {"b1", "b2"}, False, "test")
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual([item["block_id"] for item in result["evidence"]], ["b1"])
+        self.assertTrue(result["validation_warnings"])
+        self.assertFalse(result["validation_errors"])
+
+    def test_line_wrapped_quote_is_recovered_as_verbatim_source(self):
+        block = {
+            "block_id": "pdf1",
+            "source_text": "The analysis uses class-\nseparation to compare groups.",
+            "output_text": "",
+        }
+        result = validate_assessment(
+            {
+                "requirement_id": "r1",
+                "status": "partial",
+                "rationale": "The report describes class separation.",
+                "confidence": 0.8,
+                "evidence_sufficient": True,
+                "evidence": [{
+                    "block_id": "pdf1",
+                    "quote": "class-separation",
+                    "purpose": "Describes the analysis.",
+                }],
+            },
+            self.req,
+            [block],
+            {"pdf1"},
+            True,
+            "test",
+        )
+
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["evidence"][0]["quote"], "class-\nseparation")
+        self.assertTrue(result["validation_warnings"])
+
+    def test_invalid_confidence_is_warning_not_a_lost_assessment(self):
+        result = validate_assessment(
+            {
+                "requirement_id": "r1",
+                "status": "complete",
+                "rationale": "Evidence found.",
+                "confidence": "not-a-number",
+                "evidence_sufficient": True,
+                "evidence": [{
+                    "block_id": "b1",
+                    "quote": "df.isnull().sum()",
+                    "purpose": "Direct code evidence.",
+                }],
+            },
+            self.req,
+            self.blocks,
+            {"b1"},
+            True,
+            "test",
+        )
+
+        self.assertEqual(result["status"], "complete")
+        self.assertEqual(result["confidence"], 0.0)
+        self.assertTrue(result["validation_warnings"])
+        self.assertFalse(result["validation_errors"])
 
     def test_absent_refused_when_context_is_incomplete(self):
         result = validate_assessment({
@@ -100,6 +536,89 @@ class StaticAnswerEvaluatorTests(unittest.TestCase):
         result = evaluate_evidence_map(evidence_map, FakeClient(), batch_size=1, progress_callback=lambda rows, total: calls.append((len(rows), total)))
         self.assertEqual(result["summary"]["total_requirements_assessed"], 1)
         self.assertEqual(calls[-1], (1, 1))
+
+    def test_missing_assessment_is_retried_as_single_requirement(self):
+        class PartialThenRepairClient:
+            model = "test"
+
+            def __init__(self):
+                self.calls = []
+
+            def chat_json(self, payload):
+                self.calls.append(payload)
+                req = payload["requirements_to_assess"][0]
+                if len(payload["requirements_to_assess"]) > 1:
+                    return {"assessments": [{
+                        "requirement_id": req["requirement_id"],
+                        "status": "complete",
+                        "rationale": "Evidence found.",
+                        "confidence": 0.8,
+                        "evidence_sufficient": True,
+                        "evidence": [{
+                            "block_id": req["evidence_blocks"][0]["block_id"],
+                            "quote": req["evidence_blocks"][0]["source_text"],
+                            "purpose": "Direct evidence.",
+                        }],
+                    }]}
+                return FakeClient().chat_json(payload)
+
+        second = dict(self.req)
+        second["requirement_id"] = "r2"
+        client = PartialThenRepairClient()
+        evidence_map = {
+            "student_code_executed": False,
+            "questions": [{
+                "question_id": "q1",
+                "question_number": "1",
+                "evidence_blocks": self.blocks,
+                "requirements": [self.req, second],
+            }],
+        }
+        result = evaluate_evidence_map(evidence_map, client, batch_size=2)
+        evaluations = result["questions"][0]["evaluations"]
+        self.assertEqual([row["status"] for row in evaluations], ["complete", "complete"])
+        self.assertEqual(len(client.calls), 2)
+        self.assertEqual(len(client.calls[1]["requirements_to_assess"]), 1)
+
+    def test_invalid_quote_is_retried_as_single_requirement(self):
+        class InvalidThenRepairClient:
+            model = "test"
+
+            def __init__(self):
+                self.calls = []
+
+            def chat_json(self, payload):
+                self.calls.append(payload)
+                req = payload["requirements_to_assess"][0]
+                quote = "not in stored evidence"
+                if len(self.calls) > 1:
+                    quote = req["evidence_blocks"][0]["source_text"]
+                return {"assessments": [{
+                    "requirement_id": req["requirement_id"],
+                    "status": "complete",
+                    "rationale": "Evidence found.",
+                    "confidence": 0.8,
+                    "evidence_sufficient": True,
+                    "evidence": [{
+                        "block_id": req["evidence_blocks"][0]["block_id"],
+                        "quote": quote,
+                        "purpose": "Direct evidence.",
+                    }],
+                }]}
+
+        client = InvalidThenRepairClient()
+        evidence_map = {
+            "student_code_executed": False,
+            "questions": [{
+                "question_id": "q1",
+                "question_number": "1",
+                "evidence_blocks": self.blocks,
+                "requirements": [self.req],
+            }],
+        }
+        result = evaluate_evidence_map(evidence_map, client, batch_size=1)
+        self.assertEqual(result["questions"][0]["evaluations"][0]["status"], "complete")
+        self.assertEqual(len(client.calls), 2)
 
 
     def test_resume_skips_completed_requirement(self):

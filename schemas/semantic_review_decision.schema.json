@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Semantic Annotation Review Decision",
+  "type": "object",
+  "required": ["proposal_id", "review_action"],
+  "properties": {
+    "proposal_id": {"type": "string", "minLength": 1},
+    "review_action": {"enum": ["pending", "accept", "revise", "split", "reject", "defer"]},
+    "final_label": {"type": "string"},
+    "final_start_char": {"type": "integer", "minimum": 0},
+    "final_end_char": {"type": "integer", "minimum": 1},
+    "final_requirement_type": {"enum": ["action", "constraint", "deliverable", "success_criterion", "input_specification", "output_specification", "method_or_tool", "evaluation_or_comparison", "explanation_or_justification", "other"]},
+    "final_atomicity": {"enum": ["atomic", "compound", "uncertain"]},
+    "final_assessment_relevance": {"enum": ["yes", "no", "uncertain"]},
+    "split_spans_json": {"type": "string"},
+    "reviewer_note": {"type": "string"}
+  },
+  "additionalProperties": true
+}

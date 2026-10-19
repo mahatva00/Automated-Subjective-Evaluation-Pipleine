@@ -1,0 +1,8 @@
+- Approved span tokens get `B-label`/`I-label` in the matching layer.
+- `O` is assigned **only** inside a coverage range explicitly reviewed for that layer.
+- Pending, out-of-scope, separator, special tokens, unreviewed coverage and tokens whose offsets cross an annotation boundary use `-100` (the standard token-classification ignore index).
+- Positive annotations outside reviewed coverage cause a hard error.
+- Long annotations that cannot fit completely inside at least one window cause a hard error instead of being silently dropped.
+- Overlap between structure and semantic layers is allowed. Same-layer annotation overlap is rejected.
+- All source offsets are global, zero-based, and end-exclusive.
+- Student notebook code is never executed.

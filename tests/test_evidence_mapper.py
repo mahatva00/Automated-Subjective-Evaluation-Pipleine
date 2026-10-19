@@ -49,6 +49,75 @@ class EvidenceMapperTests(unittest.TestCase):
         self.assertEqual(output["questions"][1]["evidence_block_count"], 1)
         self.assertIn("SQL answer", output["questions"][1]["evidence_blocks"][0]["source_text"])
 
+    def test_pdf_notebook_export_separates_code_and_output_blocks(self):
+        submission = {
+            "segments": [{
+                "segment_id": "page_1",
+                "position": 0,
+                "original_type": "pdf_page",
+                "source_location": {"page_number": 1},
+                "content": (
+                    "Question 1: Data preparation\n"
+                    "In [1]:\n"
+                    "df = load_data()\n"
+                    "Out [1]:\n"
+                    "rows: 10\n"
+                ),
+            }]
+        }
+        output = build_evidence_map(self.qmap, self.reqs, submission, "answer.pdf.json")
+        question = output["questions"][0]
+        self.assertEqual(
+            [block["component"] for block in question["component_blocks"]["code"]],
+            ["code"],
+        )
+        self.assertEqual(
+            [block["output_text"] for block in question["component_blocks"]["output"]],
+            ["rows: 10"],
+        )
+        self.assertEqual(question["missing_components"], ["explanation"])
+
+    def test_pdf_notebook_export_separates_explanation_and_ai_log_after_output(self):
+        submission = {
+            "segments": [{
+                "segment_id": "page_1",
+                "position": 0,
+                "original_type": "pdf_page",
+                "content": (
+                    "Question 1: Data preparation\n"
+                    "In [1]:\n"
+                    "df = load_data()\n"
+                    "Out [1]:\n"
+                    "rows: 10\n"
+                    "we verify dataset size using shape.\n"
+                    "no AI tool used for 1(a)\n"
+                ),
+            }]
+        }
+        output = build_evidence_map(self.qmap, self.reqs, submission, "answer.pdf.json")
+        question = output["questions"][0]
+        self.assertEqual(len(question["component_blocks"]["explanation"]), 1)
+        self.assertEqual(len(question["component_blocks"]["ai_log"]), 1)
+        self.assertEqual(question["missing_components"], [])
+
+    def test_compact_known_question_heading_is_recognized_but_numbered_prose_is_not(self):
+        submission = {
+            "segments": [{
+                "segment_id": "page_1",
+                "position": 0,
+                "original_type": "pdf_page",
+                "content": (
+                    "1.DATA PREPARATION\n"
+                    "In [1]: df = load_data()\n"
+                    "2. unrelated inference statement\n"
+                ),
+            }]
+        }
+        output = build_evidence_map(self.qmap, self.reqs, submission, "answer.pdf.json")
+        self.assertEqual(output["questions"][0]["question_number"], "1")
+        self.assertTrue(any("load_data" in block["source_text"] for block in output["questions"][0]["evidence_blocks"]))
+        self.assertFalse(any("unrelated inference" in block["source_text"] for block in output["questions"][1]["evidence_blocks"]))
+
     def test_unanchored_text_is_not_guessed_into_a_question(self):
         submission = {"segments": [{"segment_id": "c1", "position": 0, "original_type": "markdown", "content": "Here is my answer with no question number."}]}
         output = build_evidence_map(self.qmap, self.reqs, submission, "student.json")
@@ -87,10 +156,31 @@ class EvidenceMapperTests(unittest.TestCase):
             build_evidence_map(qmap, self.reqs, submission, "student.json")
 
     def test_accepts_wrapped_source_list_and_page_metadata(self):
-        parsed = {"segments": [{"segment_id": "p2", "position": 1, "original_type": "pdf_page", "source_location": {"page_number": "2"}, "content": ["Question 2: Query design", "\nSELECT 1;"]}]}
+        parsed = {"segments": [{
+            "segment_id": "p2",
+            "position": 1,
+            "original_type": "pdf_page",
+            "source_location": {"page_number": "2"},
+            "content": ["Question 2: Query design", "\nSELECT 1;"],
+            "extraction_method": "pdf_text+image_ocr",
+            "extraction_status": "partial",
+            "embedded_image_count": 2,
+            "diagnostics": ["Embedded image OCR needs verification."],
+        }]}
         segments = extract_submission_segments(parsed, "x.json")
         self.assertEqual(segments[0].page_number, 2)
         self.assertEqual(segments[0].source_text, "Question 2: Query design\nSELECT 1;")
+        self.assertEqual(segments[0].metadata["extraction_method"], "pdf_text+image_ocr")
+        self.assertEqual(segments[0].metadata["embedded_image_count"], 2)
+        self.assertIn("verif", segments[0].metadata["extraction_diagnostics"][0].lower())
+        evidence_map = build_evidence_map(
+            self.qmap, self.reqs, parsed, "x.json"
+        )
+        q2_block = evidence_map["questions"][1]["evidence_blocks"][0]
+        self.assertEqual(
+            q2_block["metadata"]["extraction_method"], "pdf_text+image_ocr"
+        )
+        self.assertEqual(q2_block["metadata"]["embedded_image_count"], 2)
 
 
     def test_code_cell_q1_variable_is_not_split_or_marked_as_question_heading(self):
@@ -139,6 +229,294 @@ class EvidenceMapperTests(unittest.TestCase):
         self.assertEqual(output["summary"]["mapped_blocks"], 2)
         self.assertEqual(output["questions"][0]["evidence_block_count"], 1)
         self.assertEqual(output["questions"][1]["evidence_block_count"], 1)
+
+    def test_notebook_component_blocks_are_mapped_by_explicit_question_number(self):
+        submission = {
+            "segments": [
+                {"segment_id": "c0", "position": 0, "original_type": "markdown", "content": "# Q1: Data preparation"},
+            ],
+            "question_blocks": {
+                "1": [
+                    {"block_id": "c0_question", "segment_id": "c0", "component": "question",
+                     "source_text": "# Q1: Data preparation", "output_text": "",
+                     "source_location": {"cell_index": 0}},
+                    {"block_id": "c1_code", "segment_id": "c1", "component": "code",
+                     "source_text": "df = load_data()", "output_text": "",
+                     "source_location": {"cell_index": 1}},
+                    {"block_id": "c1_output", "segment_id": "c1", "component": "output",
+                     "source_text": "", "output_text": "missing values: 2",
+                     "source_location": {"cell_index": 1}},
+                    {"block_id": "c2_explanation", "segment_id": "c2", "component": "explanation",
+                     "source_text": "The missing values were reported.", "output_text": "",
+                     "source_location": {"cell_index": 2}},
+                    {"block_id": "c3_ai", "segment_id": "c3", "component": "ai_log",
+                     "source_text": "No AI tools were used.", "output_text": "",
+                     "source_location": {"cell_index": 3}},
+                ]
+            },
+        }
+        output = build_evidence_map(self.qmap, self.reqs, submission, "student.ipynb.json")
+        question = output["questions"][0]
+
+        self.assertEqual(output["mapping_method"], "notebook_explicit_question_component_blocks")
+        self.assertEqual(output["summary"]["mapped_blocks"], 5)
+        self.assertEqual(question["mapping_status"], "evidence_found")
+        self.assertEqual(question["missing_components"], [])
+        self.assertTrue(question["ai_log_present"])
+        self.assertEqual(
+            {key: len(value) for key, value in question["component_blocks"].items()},
+            {"question": 1, "question_copy": 0, "code": 1, "output": 1, "explanation": 1, "ai_log": 1},
+        )
+        self.assertNotIn("No AI tools", " ".join(
+            block["source_text"] for block in question["component_blocks"]["explanation"]
+        ))
+
+    def test_notebook_component_mapping_reports_missing_scored_components(self):
+        submission = {
+            "segments": [],
+            "question_blocks": {
+                "1": [
+                    {"block_id": "c0_question", "segment_id": "c0", "component": "question",
+                     "source_text": "# Q1", "output_text": "", "source_location": {"cell_index": 0}},
+                    {"block_id": "c1_code", "segment_id": "c1", "component": "code",
+                     "source_text": "print('done')", "output_text": "",
+                     "source_location": {"cell_index": 1}},
+                ]
+            },
+        }
+        output = build_evidence_map(self.qmap, self.reqs, submission, "student.ipynb.json")
+        question = output["questions"][0]
+
+        self.assertEqual(question["missing_components"], ["output", "explanation"])
+        self.assertFalse(question["ai_log_present"])
+
+    def test_requirement_evidence_links_follow_notebook_subquestion_anchors(self):
+        submission = {
+            "question_blocks": {
+                "1": [
+                    {"block_id": "q1", "segment_id": "q1", "source_location": {"cell_index": 0},
+                     "component": "question", "question_number": "1",
+                     "source_text": "# 1. Data preparation\n# (a) Prepare data.\n# (b) Report missing values.",
+                     "output_text": ""},
+                    {"block_id": "a_code", "segment_id": "a", "source_location": {"cell_index": 1},
+                     "component": "code", "question_number": "1",
+                     "source_text": "df = prepare_data()", "output_text": ""},
+                    {"block_id": "b_exp", "segment_id": "b", "source_location": {"cell_index": 2},
+                     "component": "question_copy", "question_number": "1",
+                     "source_text": "# (b) Report missing values.", "output_text": ""},
+                    {"block_id": "b_code", "segment_id": "b2", "source_location": {"cell_index": 3},
+                     "component": "code", "question_number": "1",
+                     "source_text": "df.isna().sum()", "output_text": ""},
+                ]
+            },
+            "segments": [],
+        }
+        reqs = {
+            "requirements": [
+                {"requirement_id": "a_r1", "question_id": "q1_occurrence_1",
+                 "source_node_id": "q1_occurrence_1_part_a", "atomic_text": "Prepare data."},
+                {"requirement_id": "b_r1", "question_id": "q1_occurrence_1",
+                 "source_node_id": "q1_occurrence_1_part_b", "atomic_text": "Report missing values."},
+            ],
+            "global_requirements": [],
+            "source_filename": "Example-QP.pdf",
+        }
+        output = build_evidence_map(self.qmap, reqs, submission, "student.ipynb")
+        requirements = {r["requirement_id"]: r for r in output["questions"][0]["requirements"]}
+        self.assertEqual(requirements["a_r1"]["linked_evidence_block_ids"], ["a_code"])
+        self.assertEqual(requirements["b_r1"]["linked_evidence_block_ids"], ["b_code"])
+        self.assertEqual(output["questions"][0]["evidence_blocks"][1]["requirement_ids"], ["a_r1"])
+
+    def test_only_atomic_code_matches_are_linked_not_other_components(self):
+        submission = {
+            "question_blocks": {
+                "1": [
+                    {"block_id": "q1", "segment_id": "q1", "source_location": {"cell_index": 0},
+                     "component": "question", "question_number": "1",
+                     "source_text": "# 1. Data preparation\n# (a) Prepare data.\n# (b) Report missing values.",
+                     "output_text": ""},
+                    {"block_id": "a_code", "segment_id": "a", "source_location": {"cell_index": 1},
+                     "component": "code", "question_number": "1",
+                     "source_text": "df = prepare_data()", "output_text": ""},
+                    {"block_id": "a_output", "segment_id": "a", "source_location": {"cell_index": 1},
+                     "component": "output", "question_number": "1",
+                     "source_text": "", "output_text": "prepared successfully"},
+                    {"block_id": "a_explanation", "segment_id": "a", "source_location": {"cell_index": 1},
+                     "component": "explanation", "question_number": "1",
+                     "source_text": "I prepared the data.", "output_text": ""},
+                ]
+            },
+            "segments": [],
+        }
+        reqs = {
+            "requirements": [
+                {"requirement_id": "a_r1", "question_id": "q1_occurrence_1",
+                 "source_node_id": "q1_occurrence_1_part_a", "atomic_text": "Prepare data."},
+            ],
+            "global_requirements": [],
+            "source_filename": "Example-QP.pdf",
+        }
+        output = build_evidence_map(self.qmap, reqs, submission, "student.ipynb")
+        requirement = output["questions"][0]["requirements"][0]
+        self.assertEqual(requirement["linked_code_block_ids"], ["a_code"])
+        self.assertEqual(requirement["linked_evidence_block_ids"], ["a_code"])
+        self.assertEqual(output["questions"][0]["evidence_blocks"][2]["requirement_ids"], [])
+        self.assertEqual(
+            output["questions"][0]["evidence_blocks"][2]["requirement_link_status"],
+            "component_presence_only",
+        )
+
+    def test_requirement_gets_same_subquestion_bundle_and_mapping_classification(self):
+        submission = {
+            "question_blocks": {
+                "1": [
+                    {"block_id": "q1", "segment_id": "q1", "component": "question",
+                     "source_text": "Question 1", "output_text": ""},
+                    {"block_id": "a_copy", "segment_id": "a_copy", "component": "question_copy",
+                     "subquestion_anchor": "a", "source_text": "(a) Explain the result.", "output_text": ""},
+                    {"block_id": "a_explanation", "segment_id": "a_cell", "component": "explanation",
+                     "subquestion_anchor": "a", "source_text": "The result is stable.", "output_text": ""},
+                    {"block_id": "a_output", "segment_id": "a_cell", "component": "output",
+                     "subquestion_anchor": "a", "source_text": "", "output_text": "stable"},
+                    {"block_id": "b_explanation", "segment_id": "b_cell", "component": "explanation",
+                     "subquestion_anchor": "b", "source_text": "Unrelated explanation.", "output_text": ""},
+                ]
+            },
+            "segments": [],
+        }
+        reqs = {
+            "requirements": [{
+                "requirement_id": "a_r1", "question_id": "q1_occurrence_1",
+                "source_node_id": "q1_occurrence_1_part_a",
+                "atomic_text": "Explain the result.",
+            }],
+            "global_requirements": [],
+            "source_filename": "Example-QP.pdf",
+        }
+        output = build_evidence_map(self.qmap, reqs, submission, "student.ipynb")
+        requirement = output["questions"][0]["requirements"][0]
+        self.assertEqual(requirement["mapping_diagnostics"]["category"], "explanation_only")
+        self.assertEqual(
+            requirement["evidence_bundle"]["block_ids"],
+            ["a_explanation", "a_output"],
+        )
+        self.assertNotIn("b_explanation", requirement["evidence_bundle"]["block_ids"])
+
+    def test_atomic_matching_does_not_use_full_subquestion_source_text(self):
+        submission = {
+            "question_blocks": {
+                "1": [
+                    {"block_id": "q1", "segment_id": "q1", "source_location": {"cell_index": 0},
+                     "component": "question", "question_number": "1",
+                     "source_text": "# 1. Experiments\n# (a) Train a linear model.\n# (b) Plot the validation error.",
+                     "output_text": ""},
+                    {"block_id": "a_code", "segment_id": "a", "source_location": {"cell_index": 1},
+                     "component": "code", "question_number": "1",
+                     "source_text": "model = LinearRegression().fit(X_train, y_train)", "output_text": ""},
+                    {"block_id": "b_copy", "segment_id": "b", "source_location": {"cell_index": 2},
+                     "component": "question_copy", "question_number": "1",
+                     "source_text": "# (b) Plot the validation error.", "output_text": ""},
+                    {"block_id": "b_code", "segment_id": "b2", "source_location": {"cell_index": 3},
+                     "component": "code", "question_number": "1",
+                     "source_text": "plt.plot(validation_errors)", "output_text": ""},
+                ]
+            },
+            "segments": [],
+        }
+        reqs = {
+            "requirements": [
+                {"requirement_id": "a_r1", "question_id": "q1_occurrence_1",
+                 "source_node_id": "q1_occurrence_1_part_a",
+                 "atomic_text": "Train a linear model.",
+                 "source_text": "(a) Train a linear model. Plot the validation error."},
+                {"requirement_id": "b_r1", "question_id": "q1_occurrence_1",
+                 "source_node_id": "q1_occurrence_1_part_b",
+                 "atomic_text": "Plot the validation error.",
+                 "source_text": "(b) Plot the validation error. Train a linear model."},
+            ],
+            "global_requirements": [],
+            "source_filename": "Example-QP.pdf",
+        }
+        output = build_evidence_map(self.qmap, reqs, submission, "student.ipynb")
+        requirements = {r["requirement_id"]: r for r in output["questions"][0]["requirements"]}
+        self.assertEqual(requirements["a_r1"]["linked_code_block_ids"], ["a_code"])
+        self.assertEqual(requirements["b_r1"]["linked_code_block_ids"], ["b_code"])
+
+    def test_atomic_matching_recognizes_common_plot_prediction_and_swap_idioms(self):
+        submission = {
+            "question_blocks": {
+                "1": [
+                    {"block_id": "q1", "segment_id": "q1", "source_location": {"cell_index": 0},
+                     "component": "question", "question_number": "1",
+                     "source_text": "# 1. Experiments", "output_text": ""},
+                    {"block_id": "plot", "segment_id": "a", "source_location": {"cell_index": 1},
+                     "component": "code", "question_number": "1",
+                     "source_text": "plt.xlabel('samples')\nplt.ylabel('error')\nplt.legend()", "output_text": ""},
+                    {"block_id": "predict", "segment_id": "a", "source_location": {"cell_index": 2},
+                     "component": "code", "question_number": "1",
+                     "source_text": "x_unknown @ theta_e1", "output_text": ""},
+                    {"block_id": "b_copy", "segment_id": "b", "source_location": {"cell_index": 3},
+                     "component": "question_copy", "question_number": "1",
+                     "source_text": "(b) Swap the training and test datasets.", "output_text": ""},
+                    {"block_id": "swap", "segment_id": "b", "source_location": {"cell_index": 3},
+                     "component": "code", "question_number": "1",
+                     "source_text": "X_train, X_test = X_test, X_train", "output_text": "",
+                     "subquestion_anchor": "b"},
+                ]
+            },
+            "segments": [],
+        }
+        reqs = {
+            "requirements": [
+                {"requirement_id": "plot_r1", "question_id": "q1_occurrence_1",
+                 "source_node_id": "q1_occurrence_1_part_a",
+                 "atomic_text": "Clearly label the axes and include a legend."},
+                {"requirement_id": "predict_r1", "question_id": "q1_occurrence_1",
+                 "source_node_id": "q1_occurrence_1_part_a",
+                 "atomic_text": "Predict the target output for an unknown input."},
+                {"requirement_id": "swap_r1", "question_id": "q1_occurrence_1",
+                 "source_node_id": "q1_occurrence_1_part_b",
+                 "atomic_text": "Swap the training and test datasets."},
+            ],
+            "global_requirements": [],
+            "source_filename": "Example-QP.pdf",
+        }
+        output = build_evidence_map(self.qmap, reqs, submission, "student.ipynb")
+        requirements = {r["requirement_id"]: r for r in output["questions"][0]["requirements"]}
+        self.assertEqual(requirements["plot_r1"]["linked_code_block_ids"], ["plot"])
+        self.assertEqual(requirements["predict_r1"]["linked_code_block_ids"], ["predict"])
+        self.assertEqual(requirements["swap_r1"]["linked_code_block_ids"], ["swap"])
+
+    def test_pdf_prose_preserves_inference_explanation_and_ai_log_components(self):
+        submission = {
+            "segments": [{
+                "segment_id": "page_10",
+                "position": 9,
+                "original_type": "pdf_page",
+                "content": (
+                    "1. Data preparation\n"
+                    "E1:\n1.0\nE2:\n0.5\nAI prompt: higher MSE means bad or good?\n"
+                    "(b) Based on the results, list all possible inferences.\n"
+                    "E2 performed better than E1."
+                ),
+            }],
+        }
+        reqs = {
+            "requirements": [
+                {"requirement_id": "q1_r1", "question_id": "q1_occurrence_1",
+                 "source_node_id": "q1_occurrence_1_part_b",
+                 "atomic_text": "List all possible inferences."},
+            ],
+            "global_requirements": [],
+            "source_filename": "Example-QP.pdf",
+        }
+        output = build_evidence_map(self.qmap, reqs, submission, "student.pdf")
+        question = output["questions"][0]
+        self.assertTrue(any(b["component"] == "output" for b in question["evidence_blocks"]))
+        self.assertTrue(any(b["component"] == "ai_log" for b in question["evidence_blocks"]))
+        explanation = next(b for b in question["evidence_blocks"] if b["component"] == "explanation")
+        self.assertEqual(explanation["subquestion_anchor"], "b")
+        self.assertIn("E2 performed better", explanation["source_text"])
 
 
 if __name__ == "__main__":

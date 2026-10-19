@@ -26,3 +26,6 @@ data/processed/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Generated parser review report
+question_parser_review.txt

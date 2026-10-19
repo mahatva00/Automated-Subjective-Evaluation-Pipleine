@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Student Question Evidence Map",
+  "type": "object",
+  "required": ["schema_version", "artifact_type", "mapping_method", "student_code_executed", "source_submission_filename", "questions", "global_requirements", "unassigned_evidence_blocks", "summary"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "artifact_type": {"const": "student_question_evidence_map"},
+    "mapping_method": {"type": "string"},
+    "student_code_executed": {"const": false},
+    "source_submission_filename": {"type": "string"},
+    "source_question_map": {"type": ["string", "null"]},
+    "source_requirements_filename": {"type": ["string", "null"]},
+    "questions": {"type": "array", "items": {"type": "object", "required": ["question_id", "mapping_status", "evidence_blocks", "requirements"], "properties": {"question_id": {"type": "string"}, "mapping_status": {"enum": ["ambiguous_repeated_number", "evidence_found", "no_evidence_found"]}, "evidence_blocks": {"type": "array"}, "component_blocks": {"type": "object", "properties": {"question": {"type": "array"}, "code": {"type": "array"}, "output": {"type": "array"}, "explanation": {"type": "array"}, "ai_log": {"type": "array"}}, "additionalProperties": false}, "missing_components": {"type": "array", "items": {"enum": ["code", "output", "explanation"]}}, "ai_log_present": {"type": "boolean"}, "requirements": {"type": "array"}}}},
+    "global_requirements": {"type": "array"},
+    "unassigned_evidence_blocks": {"type": "array"},
+    "summary": {"type": "object", "required": ["question_or_task_count", "submission_segments", "evidence_blocks", "mapped_blocks", "unassigned_blocks", "questions_with_evidence", "questions_without_evidence", "student_code_executed"], "properties": {"student_code_executed": {"const": false}}}
+  }
+}

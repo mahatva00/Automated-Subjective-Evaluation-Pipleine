@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -58,44 +59,141 @@ def extract_filename_metadata(path):
         "assessment_name": assessment
     }, diagnostics
 
+
+def _ocr_text(image):
+    candidates = []
+    for page_segmentation_mode in (6, 11):
+        data = pytesseract.image_to_data(
+            image,
+            lang="eng",
+            config=f"--oem 3 --psm {page_segmentation_mode}",
+            output_type=pytesseract.Output.DICT
+        )
+        lines = {}
+        confidences = []
+        word_count = 0
+        for index, value in enumerate(data.get("text", [])):
+            word = str(value).strip()
+            if not word:
+                continue
+            word_count += 1
+            try:
+                confidence = float(data["conf"][index])
+            except (KeyError, IndexError, TypeError, ValueError):
+                confidence = -1
+            if confidence >= 0:
+                confidences.append(confidence)
+            line_key = tuple(
+                data.get(key, [0] * len(data.get("text", [])))[index]
+                for key in ("block_num", "par_num", "line_num")
+            )
+            lines.setdefault(line_key, []).append(word)
+
+        text = "\n".join(" ".join(words) for words in lines.values()).strip()
+        average_confidence = (
+            sum(confidences) / len(confidences) if confidences else 0.0
+        )
+        quality = average_confidence * math.log1p(word_count)
+        candidates.append((quality, word_count, text, average_confidence, page_segmentation_mode))
+
+    quality, word_count, text, confidence, psm = max(candidates, key=lambda row: (row[0], row[1]))
+    return text, {
+        "word_count": word_count,
+        "average_confidence": round(confidence, 2),
+        "page_segmentation_mode": psm,
+    }
+
+
+def _image_regions(page):
+    page_area = max(page.rect.width * page.rect.height, 1)
+    seen = set()
+    regions = []
+    for info in page.get_image_info(xrefs=True):
+        bbox = info.get("bbox")
+        if not bbox:
+            continue
+        rect = pymupdf.Rect(bbox)
+        if rect.is_empty or rect.is_infinite:
+            continue
+        if rect.get_area() / page_area < 0.015:
+            continue
+        key = tuple(round(value, 1) for value in rect)
+        if key not in seen:
+            seen.add(key)
+            regions.append(rect)
+    return regions
+
+
 def extract_page_content(page):
     text = page.get_text("text", sort=True)
+    image_regions = _image_regions(page)
 
-    if text.strip():
-        return text, "pdf_text", "success", []
-
-    diagnostics = [
-        "Page contains no extractable PDF text; OCR fallback attempted."
-    ]
+    if text.strip() and not image_regions:
+        return text, "pdf_text", "success", [], []
 
     try:
-        pixmap = page.get_pixmap(
-            matrix=pymupdf.Matrix(3, 3),
-            alpha=False
-        )
-        image_bytes = pixmap.tobytes("png")
+        if text.strip():
+            image_evidence = []
+            diagnostics = []
+            for region_index, region in enumerate(image_regions, start=1):
+                pixmap = page.get_pixmap(
+                    matrix=pymupdf.Matrix(4, 4),
+                    clip=region,
+                    alpha=False
+                )
+                with Image.open(BytesIO(pixmap.tobytes("png"))) as image:
+                    ocr_text, quality = _ocr_text(image)
+                if ocr_text:
+                    image_evidence.append({
+                        "region_index": region_index,
+                        "bbox": [round(value, 2) for value in region],
+                        "ocr_text": ocr_text,
+                        "ocr_confidence": quality["average_confidence"],
+                        "is_authoritative": False,
+                    })
+                    diagnostics.append(
+                        "OCR extracted text from embedded image region "
+                        f"{region_index} (confidence {quality['average_confidence']:.2f}); "
+                        "verify against the rendered page."
+                    )
+            if image_evidence:
+                return text, "pdf_text+image_ocr", "partial", diagnostics, image_evidence
+            if image_regions:
+                return (
+                    text,
+                    "pdf_text",
+                    "partial",
+                    ["Embedded image regions were present but OCR found no readable text."],
+                    [],
+                )
+            return text, "pdf_text", "success", [], []
 
-        with Image.open(BytesIO(image_bytes)) as image:
-            ocr_text = pytesseract.image_to_string(
-                image,
-                lang="eng",
-                config="--oem 3 --psm 6"
-            )
-
-        if ocr_text.strip():
+        diagnostics = ["Page contains no extractable PDF text; OCR fallback attempted."]
+        pixmap = page.get_pixmap(matrix=pymupdf.Matrix(4, 4), alpha=False)
+        with Image.open(BytesIO(pixmap.tobytes("png"))) as image:
+            ocr_text, quality = _ocr_text(image)
+        if ocr_text:
             diagnostics.append(
-                "OCR text may contain recognition errors; verify against the original page."
+                "OCR text may contain recognition errors; verify against the original page. "
+                f"Selected page-segmentation mode {quality['page_segmentation_mode']} "
+                f"with confidence {quality['average_confidence']:.2f}."
             )
-            return ocr_text, "ocr", "partial", diagnostics
+            return ocr_text, "ocr", "partial", diagnostics, [{
+                "region_index": None,
+                "bbox": None,
+                "ocr_text": ocr_text,
+                "ocr_confidence": quality["average_confidence"],
+                "is_authoritative": False,
+                "full_page": True,
+            }]
 
         diagnostics.append("OCR did not recognize any text on this page.")
-        return "", "none", "partial", diagnostics
-
+        return "", "none", "partial", diagnostics, []
     except Exception as error:
-        diagnostics.append(
+        diagnostics = [
             f"OCR failed: {type(error).__name__}: {error}"
-        )
-        return "", "none", "partial", diagnostics
+        ]
+        return text, "pdf_text" if text.strip() else "none", "partial", diagnostics, []
 
 def parse_pdf(path, input_root):
     diagnostics = []
@@ -136,8 +234,8 @@ def parse_pdf(path, input_root):
                 raise ValueError("PDF contains no pages.")
 
             for page_index, page in enumerate(document):
-                image_info = page.get_images(full=True)
-                text, extraction_method, status, page_diagnostics = (
+                image_info = page.get_image_info(xrefs=True)
+                text, extraction_method, status, page_diagnostics, image_evidence = (
                     extract_page_content(page)
                 )
 
@@ -152,7 +250,11 @@ def parse_pdf(path, input_root):
                     "extraction_method": extraction_method,
                     "metadata": {
                         "page_width": page.rect.width,
-                        "page_height": page.rect.height
+                        "page_height": page.rect.height,
+                        "extraction_method": extraction_method,
+                        "embedded_image_count": len(image_info),
+                        "image_evidence": image_evidence,
+                        "canonical_text": extraction_method == "pdf_text",
                     },
                     "execution_count": None,
                     "outputs": [],

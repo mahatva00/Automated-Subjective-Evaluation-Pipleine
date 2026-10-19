@@ -1,0 +1,434 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/intelligent-notebook-evaluator/document-annotation-v1.schema.json",
+  "title": "Cross-domain Question Paper Annotation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_id",
+    "source",
+    "text",
+    "page_ranges",
+    "annotations",
+    "relations",
+    "annotation_metadata"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "document_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "page_ranges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/pageRange"
+      }
+    },
+    "annotations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/annotation"
+      }
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/relation"
+      }
+    },
+    "annotation_metadata": {
+      "$ref": "#/$defs/annotationMetadata"
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filename",
+        "format",
+        "document_type"
+      ],
+      "properties": {
+        "filename": {
+          "type": "string",
+          "minLength": 1
+        },
+        "format": {
+          "type": "string",
+          "minLength": 1
+        },
+        "document_type": {
+          "const": "question_paper"
+        },
+        "source_hash": {
+          "type": "string"
+        },
+        "relative_path": {
+          "type": "string"
+        },
+        "subject": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "course": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "language": {
+          "type": "string",
+          "default": "und"
+        },
+        "source_parser_schema_version": {
+          "type": "string"
+        }
+      }
+    },
+    "pageRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_segment_id",
+        "start_char",
+        "end_char"
+      ],
+      "properties": {
+        "source_segment_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page_number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "sequence_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "start_char": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end_char": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "extraction_method": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "original_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "annotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "annotation_id",
+        "layer",
+        "label",
+        "start_char",
+        "end_char",
+        "text",
+        "review_status"
+      ],
+      "properties": {
+        "annotation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layer": {
+          "enum": [
+            "structure",
+            "semantic"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start_char": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end_char": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "review_status": {
+          "enum": [
+            "unreviewed",
+            "reviewed",
+            "adjudicated"
+          ]
+        },
+        "annotator_id": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "layer": {
+                "const": "structure"
+              }
+            },
+            "required": [
+              "layer"
+            ]
+          },
+          "then": {
+            "properties": {
+              "label": {
+                "enum": [
+                  "document_title",
+                  "section_heading",
+                  "question_heading",
+                  "subquestion_heading",
+                  "question_body",
+                  "subquestion_body",
+                  "instruction_heading",
+                  "list_marker",
+                  "list_item",
+                  "table_heading",
+                  "table",
+                  "table_row",
+                  "table_cell",
+                  "code_block",
+                  "equation_block",
+                  "figure_caption",
+                  "page_header",
+                  "page_footer",
+                  "document_metadata",
+                  "continuation_block",
+                  "other"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "layer": {
+                "const": "semantic"
+              }
+            },
+            "required": [
+              "layer"
+            ]
+          },
+          "then": {
+            "properties": {
+              "label": {
+                "enum": [
+                  "requirement",
+                  "context",
+                  "example",
+                  "option",
+                  "alternative_marker",
+                  "grading_instruction",
+                  "submission_instruction",
+                  "administrative_instruction",
+                  "definition",
+                  "explanatory_note",
+                  "non_assessable",
+                  "other"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "layer": {
+                "const": "semantic"
+              },
+              "label": {
+                "const": "requirement"
+              }
+            },
+            "required": [
+              "layer",
+              "label"
+            ]
+          },
+          "then": {
+            "required": [
+              "attributes"
+            ],
+            "properties": {
+              "attributes": {
+                "type": "object",
+                "required": [
+                  "requirement_type",
+                  "atomicity",
+                  "assessment_relevance"
+                ],
+                "properties": {
+                  "requirement_type": {
+                    "enum": [
+                      "action",
+                      "constraint",
+                      "deliverable",
+                      "success_criterion",
+                      "input_specification",
+                      "output_specification",
+                      "method_or_tool",
+                      "evaluation_or_comparison",
+                      "explanation_or_justification",
+                      "other"
+                    ]
+                  },
+                  "atomicity": {
+                    "enum": [
+                      "atomic",
+                      "compound",
+                      "uncertain"
+                    ]
+                  },
+                  "assessment_relevance": {
+                    "enum": [
+                      "yes",
+                      "no",
+                      "uncertain"
+                    ]
+                  },
+                  "canonical_text": {
+                    "type": "string"
+                  },
+                  "label_note": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relation_id",
+        "source_annotation_id",
+        "target_annotation_id",
+        "type"
+      ],
+      "properties": {
+        "relation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_annotation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_annotation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "parent_of",
+            "belongs_to",
+            "continues",
+            "alternative_to",
+            "option_for",
+            "constrains",
+            "depends_on",
+            "precedes",
+            "references",
+            "applies_to",
+            "other"
+          ]
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "review_status": {
+          "enum": [
+            "unreviewed",
+            "reviewed",
+            "adjudicated"
+          ]
+        }
+      }
+    },
+    "annotationMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "guidelines_version"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "draft",
+            "reviewed",
+            "adjudicated",
+            "example"
+          ]
+        },
+        "guidelines_version": {
+          "const": "1.0.0"
+        },
+        "annotator_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "adjudicator_id": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

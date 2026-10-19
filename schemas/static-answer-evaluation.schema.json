@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Static Answer Evaluation",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_type",
+    "student_code_executed",
+    "grading_policy_applied",
+    "questions",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "artifact_type": {
+      "const": "static_answer_evaluation"
+    },
+    "student_code_executed": {
+      "const": false
+    },
+    "grading_policy_applied": {
+      "const": false
+    },
+    "global_evaluations": {
+      "type": "array"
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "question_id",
+          "evaluations"
+        ],
+        "properties": {
+          "question_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evaluations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "requirement_id",
+                "status",
+                "rationale",
+                "confidence",
+                "evidence"
+              ],
+              "properties": {
+                "requirement_id": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "complete",
+                    "partial",
+                    "absent",
+                    "needs_review"
+                  ]
+                },
+                "rationale": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "block_id",
+                      "quote",
+                      "purpose"
+                    ],
+                    "properties": {
+                      "block_id": {
+                        "type": "string"
+                      },
+                      "quote": {
+                        "type": "string"
+                      },
+                      "purpose": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_requirements_assessed",
+        "complete",
+        "partial",
+        "absent",
+        "needs_review"
+      ]
+    }
+  }
+}

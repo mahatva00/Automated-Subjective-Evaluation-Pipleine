@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DistilBERT BIO Window v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "document_id",
+    "split",
+    "group_id",
+    "window_index",
+    "input_ids",
+    "attention_mask",
+    "special_tokens_mask",
+    "offset_mapping",
+    "structure_labels",
+    "semantic_labels",
+    "annotation_targets"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "distilbert-bio-window-v1.0"
+    },
+    "document_id": {
+      "type": "string"
+    },
+    "source_filename": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "split": {
+      "enum": [
+        "train",
+        "validation",
+        "test"
+      ]
+    },
+    "group_id": {
+      "type": "string"
+    },
+    "window_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "document_token_start": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "document_token_end": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "input_ids": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "attention_mask": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "special_tokens_mask": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "offset_mapping": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "structure_labels": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "semantic_labels": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "structure_tags": {
+      "type": "array",
+      "items": {
+        "type": [
+          "string",
+          "integer"
+        ]
+      }
+    },
+    "semantic_tags": {
+      "type": "array",
+      "items": {
+        "type": [
+          "string",
+          "integer"
+        ]
+      }
+    },
+    "annotation_targets": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Training Coverage Ledger v1",
+  "type": "object",
+  "required": [
+    "coverage_schema_version",
+    "document_id",
+    "source_text_sha256",
+    "text_length",
+    "ledger_status",
+    "segments"
+  ],
+  "properties": {
+    "coverage_schema_version": {
+      "const": "1.0.0"
+    },
+    "document_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_text_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "text_length": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "ledger_status": {
+      "enum": [
+        "draft",
+        "reviewed",
+        "adjudicated"
+      ]
+    },
+    "source_scope_ledger_document_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_scope_ledger_policy_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "coverage_id",
+          "start_char",
+          "end_char",
+          "text_sha256",
+          "status",
+          "reviewed_layers"
+        ],
+        "properties": {
+          "coverage_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_segment_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "start_char": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end_char": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "text_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "status": {
+            "enum": [
+              "reviewed",
+              "out_of_scope",
+              "pending",
+              "separator"
+            ]
+          },
+          "reviewed_layers": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "structure",
+                "semantic"
+              ]
+            }
+          },
+          "scope_status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "in_scope",
+              "out_of_scope",
+              "pending",
+              "separator",
+              null
+            ]
+          },
+          "question_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page_numbers": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "reviewer": {
+            "type": "string"
+          },
+          "review_date": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "coverage_review_metadata": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

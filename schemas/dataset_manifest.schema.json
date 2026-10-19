@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/intelligent-notebook-evaluator/dataset-manifest-v1.schema.json",
+  "title": "Annotated Question Paper Dataset Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_version", "documents"],
+  "properties": {
+    "manifest_version": {"const": "1.0.0"},
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["document_id", "annotation_path", "split", "group_id"],
+        "properties": {
+          "document_id": {"type": "string", "minLength": 1},
+          "annotation_path": {"type": "string", "minLength": 1},
+          "split": {"enum": ["train", "validation", "test", "unassigned"]},
+          "group_id": {"type": "string", "minLength": 1},
+          "subject": {"type": ["string", "null"]},
+          "course": {"type": ["string", "null"]},
+          "notes": {"type": "string"}
+        }
+      }
+    }
+  }
+}

@@ -6,6 +6,7 @@ It never imports, runs, or evaluates student code.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import time
@@ -37,9 +38,17 @@ Definitions:
 - absent: supplied evidence is sufficiently comprehensive to establish that the requirement is not addressed.
 - needs_review: evidence is insufficient, ambiguous, malformed, or not safely assessable.
 
-For complete or partial, cite at least one exact verbatim quotation from source_text or output_text in an evidence block.
+For complete or partial, cite at least one verbatim quotation from source_text or output_text in an evidence block.
+Whitespace and line-break differences are acceptable, including words split by a line-ending hyphen.
 Never invent block IDs or quotations. Code can be assessed by static inspection only; do not assume it works unless
 a corresponding stored output supports that claim. If context_complete is false, you must not label an item absent.
+For every evidence item, block_id must be copied exactly from one of the supplied evidence_blocks for that
+requirement. Do not use IDs from another requirement, page, or earlier response. A visual_evidence field
+may describe a rendered image attached to a PDF block; it is auxiliary corroboration only, not executable
+code or authoritative extracted text, and must not be quoted as source_text.
+Each evidence block includes a component label. Quote only text that appears in that same block_id and
+component; never copy a quote from a different block, even when the blocks are from the same question.
+For long prose or output blocks, prefer one or two short, exact quotes copied from the supplied block.
 If the evidence does not prove correctness, explain this limitation. Return ONLY valid JSON with this shape:
 {"assessments":[{"requirement_id":"...","status":"complete|partial|absent|needs_review",
 "rationale":"brief reason","confidence":0.0,"evidence_sufficient":false,
@@ -47,6 +56,16 @@ If the evidence does not prove correctness, explain this limitation. Return ONLY
 """
 
 TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]*|\d+(?:\.\d+)?")
+VISUAL_REQUIREMENT_RE = re.compile(
+    r"\b(?:plot|chart|graph|figure|visuali[sz]|bar|scatter|histogram|"
+    r"axis|axes|legend|curve|line\s+graph)\b",
+    re.IGNORECASE,
+)
+INFERENCE_REQUIREMENT_RE = re.compile(
+    r"\b(?:infer(?:ence|ences)?|conclu(?:de|sion|sions)|compare|"
+    r"coefficient|results?|possible\s+inferences?|interpret)\b",
+    re.IGNORECASE,
+)
 
 def tokenize(text: str) -> set[str]:
     tokens: set[str] = set()
@@ -72,6 +91,246 @@ def _score_block(req_tokens: set[str], block: dict[str, Any]) -> tuple[float, in
     source_overlap = len(req_tokens & tokenize(source))
     return (overlap + 0.25 * source_overlap, overlap)
 
+def _relevant_excerpt(text: str, req_tokens: set[str], max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    match_start = next(
+        (
+            match.start()
+            for match in TOKEN_RE.finditer(text)
+            if tokenize(match.group()) & req_tokens
+        ),
+        0,
+    )
+    start = max(0, match_start - max_chars // 3)
+    end = min(len(text), start + max_chars)
+    start = max(0, end - max_chars)
+    return text[start:end]
+
+def _normalized_quote_with_spans(text: str) -> tuple[str, list[int], list[int]]:
+    normalized: list[str] = []
+    starts: list[int] = []
+    ends: list[int] = []
+    index = 0
+    while index < len(text):
+        if text[index] in "-‐‑‒–—−":
+            index += 1
+            while index < len(text) and text[index].isspace():
+                index += 1
+            continue
+        if text[index].isspace():
+            start = index
+            while index < len(text) and text[index].isspace():
+                index += 1
+            if normalized and normalized[-1] == " ":
+                ends[-1] = index
+                continue
+            normalized.append(" ")
+            starts.append(start)
+            ends.append(index)
+            continue
+        normalized.append(text[index])
+        starts.append(index)
+        ends.append(index + 1)
+        index += 1
+    normalized_text = "".join(normalized)
+    trim_start = len(normalized_text) - len(normalized_text.lstrip())
+    trim_end = len(normalized_text.rstrip())
+    return (
+        normalized_text[trim_start:trim_end],
+        starts[trim_start:trim_end],
+        ends[trim_start:trim_end],
+    )
+
+def _recover_verbatim_quote(quote: str, text: str) -> str | None:
+    normalized_quote, _, _ = _normalized_quote_with_spans(quote)
+    normalized_text, starts, ends = _normalized_quote_with_spans(text)
+    if not normalized_quote:
+        return None
+    match_start = normalized_text.find(normalized_quote)
+    if match_start < 0:
+        return None
+    match_end = match_start + len(normalized_quote) - 1
+    return text[starts[match_start]:ends[match_end]]
+
+def _cell_identity(block: dict[str, Any]) -> tuple[str, str]:
+    """Return a stable identity shared by code and its extracted output block."""
+    block_id = str(block.get("block_id") or "")
+    base_id = re.sub(r"_(?:output|explanation|ai_log)$", "", block_id)
+    return str(block.get("segment_id") or ""), base_id
+
+def _linked_evidence_candidates(
+    requirement: dict[str, Any],
+    blocks: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], bool]:
+    linked_ids = requirement.get("linked_evidence_block_ids")
+    if not isinstance(linked_ids, list):
+        return blocks, False
+    linked = {str(block_id) for block_id in linked_ids}
+    linked_blocks = [
+        block for block in blocks
+        if str(block.get("block_id") or "") in linked
+    ]
+    if not linked_blocks:
+        return [], True
+    identities = {_cell_identity(block) for block in linked_blocks}
+    bundle = requirement.get("evidence_bundle")
+    bundle_ids = {
+        str(block_id)
+        for block_id in (bundle or {}).get("block_ids", [])
+    } if isinstance(bundle, dict) else set()
+    candidates = []
+    for block in blocks:
+        component = str(block.get("component") or "")
+        if str(block.get("block_id") or "") in linked:
+            candidates.append(block)
+            continue
+        if (
+            str(block.get("block_id") or "") in bundle_ids
+            and component in {"output", "explanation"}
+        ):
+            candidates.append(block)
+            continue
+        if (
+            _cell_identity(block) in identities
+            and component == "output"
+            and not any(
+                str(code.get("block_id") or "") == _cell_identity(block)[1]
+                and str(code.get("output_text") or "").strip()
+                for code in linked_blocks
+            )
+        ):
+            candidates.append(block)
+    return candidates, True
+
+
+def _requirement_evidence_mode(requirement: dict[str, Any]) -> str:
+    text = get_requirement_text(requirement)
+    requirement_type = str(requirement.get("requirement_type") or "").casefold()
+    if VISUAL_REQUIREMENT_RE.search(text):
+        return "visual"
+    if requirement_type == "reasoning" or INFERENCE_REQUIREMENT_RE.search(text):
+        return "inference"
+    return "code"
+
+
+def _block_component(block: dict[str, Any]) -> str:
+    component = str(block.get("component") or "").casefold()
+    if component:
+        return component
+    return str(block.get("segment_type") or "").casefold()
+
+
+def _requirement_anchor(requirement: dict[str, Any]) -> str | None:
+    source_node = str(requirement.get("source_node_id") or "")
+    match = re.search(r"(?:^|_)part_([a-z])(?:_|$)", source_node, re.IGNORECASE)
+    return match.group(1).casefold() if match else None
+
+
+def _prioritize_context_components(
+    blocks: list[dict[str, Any]],
+    *,
+    max_blocks: int,
+    preferred_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Keep linked code authoritative while retaining output/explanation diversity."""
+    if len(blocks) <= max_blocks:
+        return blocks
+    preferred_ids = preferred_ids or set()
+    component_order = {"code": 0, "output": 1, "explanation": 2}
+    ranked = sorted(
+        enumerate(blocks),
+        key=lambda item: (
+            0 if str(item[1].get("block_id") or "") in preferred_ids else 1,
+            component_order.get(_block_component(item[1]), 3),
+            item[0],
+        ),
+    )
+    selected: list[dict[str, Any]] = []
+    selected_ids: set[str] = set()
+    for _, block in ranked:
+        block_id = str(block.get("block_id") or "")
+        if _block_component(block) in {"output", "explanation"} and block_id not in selected_ids:
+            selected.append(block)
+            selected_ids.add(block_id)
+            if len(selected) == max_blocks:
+                break
+    for _, block in ranked:
+        block_id = str(block.get("block_id") or "")
+        if block_id not in selected_ids:
+            selected.append(block)
+            selected_ids.add(block_id)
+            if len(selected) == max_blocks:
+                break
+    return sorted(
+        selected,
+        key=lambda block: (
+            int(block.get("segment_position") or 0),
+            str(block.get("block_id") or ""),
+        ),
+    )
+
+
+def _fallback_evidence_candidates(
+    requirement: dict[str, Any],
+    blocks: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Recover useful same-question context when deterministic linking missed a code cell."""
+    mode = _requirement_evidence_mode(requirement)
+    usable = [
+        block for block in blocks
+        if _block_component(block) not in {"question", "question_copy", "ai_log"}
+    ]
+    bundle = requirement.get("evidence_bundle")
+    bundle_ids = {
+        str(block_id)
+        for block_id in (bundle or {}).get("block_ids", [])
+    } if isinstance(bundle, dict) else set()
+    if bundle_ids:
+        bundled = [
+            block for block in usable
+            if str(block.get("block_id") or "") in bundle_ids
+        ]
+        if bundled:
+            usable = bundled
+    if mode == "inference":
+        # Inference requirements are intentionally supported by written reasoning
+        # and retained outputs, not by pretending that prose is code evidence.
+        return [
+            block for block in usable
+            if _block_component(block) in {"explanation", "output"}
+        ]
+    if mode == "visual":
+        visual = []
+        for block in usable:
+            component = _block_component(block)
+            metadata = block.get("metadata")
+            has_image = isinstance(metadata, dict) and bool(metadata.get("image_evidence"))
+            text = block_full_text(block)
+            if component in {"code", "output", ""} and (
+                has_image or VISUAL_REQUIREMENT_RE.search(text)
+            ):
+                visual.append(block)
+        if visual:
+            return visual
+        # Short axis/legend subrequirements often have no distinctive tokens
+        # of their own. Inherit the parent subquestion's code/output context
+        # rather than treating the missing lexical match as missing evidence.
+        anchor = _requirement_anchor(requirement)
+        contextual = [
+            block for block in usable
+            if _block_component(block) in {"code", "output", ""}
+            and (not anchor or str(block.get("subquestion_anchor") or "").casefold() == anchor)
+        ]
+        return contextual or [
+            block for block in usable
+            if _block_component(block) in {"code", "output", ""}
+        ]
+    return [
+        block for block in usable
+        if _block_component(block) in {"code", "output", ""}
+    ]
+
 def select_evidence_blocks(
     requirement: dict[str, Any],
     blocks: list[dict[str, Any]],
@@ -83,20 +342,108 @@ def select_evidence_blocks(
     """Select generic lexical candidates; preserve original block IDs and quoted source spans."""
     if not blocks:
         return [], False
+    original_blocks = blocks
+    fallback_used = False
+    fallback_mode = _requirement_evidence_mode(requirement)
+    linked_blocks, has_links = _linked_evidence_candidates(requirement, blocks)
+    if has_links:
+        blocks = linked_blocks
+        if not blocks:
+            # An empty deterministic link is a mapping miss, not proof that the
+            # answer is absent. Recover typed same-question evidence and keep
+            # context_complete false so "absent" remains disallowed.
+            blocks = _fallback_evidence_candidates(requirement, original_blocks)
+            has_links = False
+            fallback_used = True
+            if not blocks:
+                return [], False
+    elif not has_links:
+        if isinstance(requirement.get("linked_evidence_block_ids"), list):
+            blocks = _fallback_evidence_candidates(requirement, blocks)
+            fallback_used = True
+            if not blocks:
+                return [], False
     req_tokens = tokenize(get_requirement_text(requirement))
     ranked = []
     for index, block in enumerate(blocks):
         score, overlap = _score_block(req_tokens, block)
         ranked.append((score, overlap, -index, index, block))
     ranked.sort(reverse=True)
-    # If no lexical overlap exists, only inspect early blocks but never infer absence from them.
-    chosen_ranked = [x for x in ranked if x[1] > 0][:max_blocks]
-    if not chosen_ranked:
-        chosen_ranked = ranked[:min(max_blocks, len(ranked))]
-    chosen = sorted((x[4] for x in chosen_ranked), key=lambda b: int(b.get("segment_position") or 0))
+    if has_links:
+        # Linked code is authoritative for mapping; include its same-cell output
+        # before lexical ranking can discard the result needed to verify it.
+        priority = {
+            str(block_id): index
+            for index, block_id in enumerate(requirement.get("linked_evidence_block_ids", []))
+        }
+        chosen = sorted(
+            blocks,
+            key=lambda block: (
+                0 if str(block.get("block_id") or "") in priority else 1,
+                priority.get(str(block.get("block_id") or ""), 0),
+                int(block.get("segment_position") or 0),
+                str(block.get("block_id") or ""),
+            ),
+        )
+        chosen = _prioritize_context_components(
+            chosen,
+            max_blocks=max_blocks,
+            preferred_ids=set(priority),
+        )
+        chosen = sorted(
+            chosen,
+            key=lambda block: (int(block.get("segment_position") or 0), str(block.get("block_id") or "")),
+        )
+    else:
+        # If no lexical overlap exists, only inspect early blocks but never infer absence from them.
+        if fallback_used and fallback_mode == "inference":
+            chosen_ranked = ranked[:max_blocks]
+        else:
+            chosen_ranked = [x for x in ranked if x[1] > 0][:max_blocks]
+        if not chosen_ranked:
+            chosen_ranked = ranked[:min(max_blocks, len(ranked))]
+        chosen = sorted((x[4] for x in chosen_ranked), key=lambda b: int(b.get("segment_position") or 0))
+        if fallback_used:
+            selected_ids = {str(block.get("block_id") or "") for block in chosen}
+            selected_cells = {
+                _cell_identity(block)
+                for block in chosen
+                if _block_component(block) == "code"
+            }
+            selected_segments = {
+                str(block.get("segment_id") or "")
+                for block in chosen
+                if _block_component(block) == "code"
+            }
+            for block in blocks:
+                if (
+                    _block_component(block) == "output"
+                    and (
+                        _cell_identity(block) in selected_cells
+                        or str(block.get("segment_id") or "") in selected_segments
+                    )
+                    and str(block.get("block_id") or "") not in selected_ids
+                ):
+                    chosen.append(block)
+            chosen = sorted(
+                chosen,
+                key=lambda block: (
+                    int(block.get("segment_position") or 0),
+                    str(block.get("block_id") or ""),
+                ),
+            )[:max_blocks]
+        chosen = _prioritize_context_components(
+            chosen,
+            max_blocks=max_blocks,
+            preferred_ids={
+                str(block.get("block_id") or "")
+                for block in blocks
+                if _block_component(block) == "code"
+            },
+        )
     packaged: list[dict[str, Any]] = []
     used = 0
-    all_represented = len(chosen) == len(blocks)
+    all_represented = len(chosen) == len(blocks) and not fallback_used
     for block in chosen:
         source = str(block.get("source_text") or "")
         output = str(block.get("output_text") or "")
@@ -105,17 +452,38 @@ def select_evidence_blocks(
         source_cap = min(len(source), max_block_chars)
         remaining_cap = max(0, max_block_chars - source_cap)
         output_cap = min(len(output), remaining_cap)
-        source_view = source[:source_cap]
+        source_view = _relevant_excerpt(source, req_tokens, source_cap)
         output_view = output[:output_cap]
         truncated = source_cap < len(source) or output_cap < len(output)
+        metadata = block.get("metadata")
         item = {
             "block_id": str(block.get("block_id") or ""),
             "segment_id": str(block.get("segment_id") or ""),
             "segment_position": block.get("segment_position"),
             "segment_type": str(block.get("segment_type") or "unknown"),
-            "source_text": source_view + (" [SOURCE TEXT TRUNCATED]" if source_cap < len(source) else ""),
+            "page_number": block.get("page_number"),
+            "mapping_method": block.get("mapping_method"),
+            "mapping_status": block.get("mapping_status"),
+            "component": _block_component(block),
+            "heading_number": block.get("heading_number"),
+            "heading_title": block.get("heading_title"),
+            "metadata": metadata if isinstance(metadata, dict) else {},
+            "source_text": source_view + (" [SOURCE TEXT EXCERPT; ORIGINAL CONTENT OMITTED]" if source_cap < len(source) else ""),
             "output_text": output_view + (" [STORED OUTPUT TRUNCATED]" if output_cap < len(output) else ""),
         }
+        if isinstance(metadata, dict) and metadata.get("image_evidence"):
+            visual_items = []
+            for image in metadata["image_evidence"]:
+                if not isinstance(image, dict):
+                    continue
+                visual_items.append({
+                    "region_index": image.get("region_index"),
+                    "ocr_text": str(image.get("ocr_text") or "")[:1200],
+                    "ocr_confidence": image.get("ocr_confidence"),
+                    "is_authoritative": False,
+                })
+            if visual_items:
+                item["visual_evidence"] = visual_items
         cost = len(item["source_text"]) + len(item["output_text"]) + 100
         if packaged and used + cost > max_chars:
             all_represented = False
@@ -143,6 +511,113 @@ def normalize_llm_json(content: str) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise ValueError("Model response must be a JSON object")
     return parsed
+
+
+def normalize_assessment_response(
+    raw_response: dict[str, Any] | None,
+    expected_requirement_ids: Iterable[str],
+) -> dict[str, Any]:
+    """Keep only one assessment per requested requirement and expose omissions."""
+    expected = {str(item) for item in expected_requirement_ids}
+    raw_items = raw_response.get("assessments", []) if isinstance(raw_response, dict) else []
+    if not isinstance(raw_items, list):
+        raw_items = []
+    by_id: dict[str, dict[str, Any]] = {}
+    for item in raw_items:
+        if not isinstance(item, dict) or item.get("requirement_id") is None:
+            continue
+        requirement_id = str(item["requirement_id"])
+        if requirement_id in expected and requirement_id not in by_id:
+            by_id[requirement_id] = item
+    assessments = []
+    for requirement_id in expected_requirement_ids:
+        key = str(requirement_id)
+        assessments.append(
+            by_id.get(key, {"requirement_id": key, "_response_missing": True})
+        )
+    return {"assessments": assessments}
+
+
+def _assessment_items_by_id(items: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return {
+        str(item["requirement_id"]): item
+        for item in items
+        if (
+            isinstance(item, dict)
+            and item.get("requirement_id") is not None
+            and item.get("_response_missing") is not True
+        )
+    }
+
+
+def _repair_missing_assessments(
+    client: Any,
+    payloads: list[dict[str, Any]],
+    assessment_list: list[dict[str, Any]],
+    before_request_callback: Callable[[int], None] | None,
+) -> list[dict[str, Any]]:
+    """Retry omitted rows individually while preserving their original context."""
+    returned = _assessment_items_by_id(assessment_list)
+    missing = [
+        payload for payload in payloads
+        if str(payload.get("requirement_id") or "") not in returned
+    ]
+    if not missing:
+        return assessment_list
+    repaired: list[dict[str, Any]] = []
+    for payload in missing:
+        if before_request_callback is not None:
+            before_request_callback(1)
+        response = client.chat_json({"requirements_to_assess": [payload]})
+        single = normalize_assessment_response(
+            response, [str(payload.get("requirement_id") or "")]
+        )["assessments"]
+        repaired.extend(single)
+    return [
+        *[item for item in assessment_list if not item.get("_response_missing")],
+        *repaired,
+    ]
+
+
+def _repair_invalid_quote_assessments(
+    client: Any,
+    payloads: list[dict[str, Any]],
+    assessment_list: list[dict[str, Any]],
+    contexts: dict[str, tuple[list[dict[str, Any]], bool, set[str]]],
+    blocks: list[dict[str, Any]],
+    model_name: str,
+    before_request_callback: Callable[[int], None] | None,
+) -> list[dict[str, Any]]:
+    """Retry rows whose initial evidence quotations cannot be verified."""
+    by_id = _assessment_items_by_id(assessment_list)
+    repaired = dict(by_id)
+    for payload in payloads:
+        requirement_id = str(payload.get("requirement_id") or "")
+        raw = by_id.get(requirement_id)
+        if raw is None:
+            continue
+        selected, context_complete, supplied = contexts[requirement_id]
+        probe = validate_assessment(
+            raw,
+            {"requirement_id": requirement_id, "requirement_text": payload.get("requirement_text")},
+            blocks,
+            supplied,
+            context_complete,
+            model_name,
+        )
+        if not any(
+            "evidence quotation" in str(error).casefold()
+            for error in probe.get("validation_errors", [])
+        ):
+            continue
+        if before_request_callback is not None:
+            before_request_callback(1)
+        response = client.chat_json({"requirements_to_assess": [payload]})
+        retry_items = normalize_assessment_response(response, [requirement_id])["assessments"]
+        if retry_items and retry_items[0].get("_response_missing") is not True:
+            repaired[requirement_id] = retry_items[0]
+    return list(repaired.values())
+
 
 class OllamaClient:
     """Ollama chat client tuned for repeatable, checkpoint-friendly assessment runs.
@@ -471,17 +946,23 @@ def validate_assessment(
     req_id = str(requirement.get("requirement_id") or "")
     status = raw.get("status")
     rationale = str(raw.get("rationale") or "").strip()
+    confidence_invalid = False
     try:
         confidence = float(raw.get("confidence"))
     except (TypeError, ValueError):
-        confidence = -1.0
+        confidence = 0.0
+        confidence_invalid = True
     errors: list[str] = []
+    warnings: list[str] = []
+    if raw.get("_response_missing") is True:
+        errors.append("missing model assessment")
     if status not in VALID_STATUSES:
         errors.append("invalid status")
     if not rationale:
         errors.append("missing rationale")
-    if not (0.0 <= confidence <= 1.0):
-        errors.append("confidence must be between 0 and 1")
+    if confidence_invalid or not math.isfinite(confidence) or not (0.0 <= confidence <= 1.0):
+        confidence = 0.0
+        warnings.append("invalid confidence; reported as 0")
     full_by_id = {str(b.get("block_id") or ""): b for b in original_blocks}
     evidence_out = []
     raw_evidence = raw.get("evidence", [])
@@ -502,10 +983,21 @@ def validate_assessment(
             errors.append("model cited a block not supplied in its context")
             continue
         block = full_by_id[block_id]
-        if not quote or (quote not in str(block.get("source_text") or "") and quote not in str(block.get("output_text") or "")):
-            errors.append("evidence quote is not an exact substring of stored source text/output")
+        source_text = str(block.get("source_text") or "")
+        output_text = str(block.get("output_text") or "")
+        verbatim_quote = (
+            quote if quote and (quote in source_text or quote in output_text) else None
+        )
+        if verbatim_quote is None and quote:
+            verbatim_quote = _recover_verbatim_quote(quote, source_text)
+            if verbatim_quote is None:
+                verbatim_quote = _recover_verbatim_quote(quote, output_text)
+            if verbatim_quote is not None:
+                warnings.append("evidence quote normalized to the exact stored line-wrapped text")
+        if verbatim_quote is None:
+            warnings.append("discarded evidence quote that was not an exact substring of stored source text/output")
             continue
-        evidence_out.append({"block_id": block_id, "quote": quote, "purpose": purpose})
+        evidence_out.append({"block_id": block_id, "quote": verbatim_quote, "purpose": purpose})
     evidence_sufficient = raw.get("evidence_sufficient") is True
     if status in {"complete", "partial"} and not evidence_out:
         errors.append("complete/partial assessment requires at least one valid exact evidence quotation")
@@ -526,6 +1018,7 @@ def validate_assessment(
             "evidence": evidence_out,
             "evaluator_model": model_name,
             "validation_errors": errors,
+            "validation_warnings": warnings,
         }
     return {
         "requirement_id": req_id,
@@ -541,6 +1034,7 @@ def validate_assessment(
         "evidence": evidence_out,
         "evaluator_model": model_name,
         "validation_errors": [],
+        "validation_warnings": warnings,
     }
 
 def _batches(items: list[dict[str, Any]], size: int) -> Iterable[list[dict[str, Any]]]:
@@ -552,6 +1046,141 @@ def _get_all_blocks(evidence_map: dict[str, Any]) -> list[dict[str, Any]]:
     for question in evidence_map.get("questions", []) or []:
         blocks.extend(question.get("evidence_blocks", []) or [])
     return blocks
+
+
+def _evidence_diagnostic(
+    requirement: dict[str, Any],
+    selected: list[dict[str, Any]],
+    context_complete: bool,
+    result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    components = Counter(_block_component(block) for block in selected)
+    linked = requirement.get("linked_code_block_ids") or requirement.get("linked_evidence_block_ids") or []
+    bundle = requirement.get("evidence_bundle")
+    expected_ids = {
+        str(block_id)
+        for block_id in (bundle or {}).get("block_ids", [])
+    } if isinstance(bundle, dict) else set()
+    selected_ids = {
+        str(block.get("block_id") or "")
+        for block in selected
+    }
+    context_reasons: list[str] = []
+    if any(
+        "[SOURCE TEXT EXCERPT;" in str(block.get("source_text") or "")
+        or "[STORED OUTPUT TRUNCATED]" in str(block.get("output_text") or "")
+        or "[CONTEXT TRUNCATED]" in str(block.get("source_text") or "")
+        for block in selected
+    ):
+        context_reasons.append("evidence_truncated")
+    omitted_bundle_ids = sorted(expected_ids - selected_ids)
+    if omitted_bundle_ids:
+        context_reasons.append("bundle_blocks_omitted")
+    mapping_category = (requirement.get("mapping_diagnostics") or {}).get("category")
+    if mapping_category in {"output_only", "explanation_only", "true_no_evidence"}:
+        context_reasons.append("missing_required_component")
+    validation_errors = [
+        str(error).casefold()
+        for error in (result or {}).get("validation_errors", [])
+    ]
+    if any("missing model assessment" in error for error in validation_errors):
+        category = "missing_model_assessment"
+    elif any("invalid status" in error for error in validation_errors):
+        category = "invalid_model_status"
+    elif any("evidence" in error and ("quotation" in error or "quote" in error) for error in validation_errors):
+        category = "invalid_model_quote"
+    elif not selected:
+        mapping_category = (requirement.get("mapping_diagnostics") or {}).get("category")
+        category = (
+            "missing_required_component"
+            if mapping_category in {"true_no_evidence", "output_only", "explanation_only"}
+            else "no_evidence"
+        )
+    elif not linked:
+        category = "mapping_gap"
+    elif not context_complete:
+        category = "incomplete_context"
+    elif (result or {}).get("status") == "needs_review":
+        category = "ambiguous_model_judgment"
+    else:
+        category = "mapped_evidence"
+    return {
+        "category": category,
+        "context_complete": context_complete,
+        "context_reasons": context_reasons,
+        "expected_bundle_block_count": len(expected_ids),
+        "omitted_bundle_block_ids": omitted_bundle_ids,
+        "selected_block_ids": [str(block.get("block_id") or "") for block in selected],
+        "selected_component_counts": dict(components),
+        "linked_code_block_count": len(linked),
+        "question_block_count": len(requirement.get("_question_block_ids") or []),
+    }
+
+
+def _bundle_summary(blocks: list[dict[str, Any]]) -> dict[str, Any]:
+    grouped: dict[str, list[str]] = {}
+    for block in blocks:
+        grouped.setdefault(_block_component(block) or "unknown", []).append(
+            str(block.get("block_id") or "")
+        )
+    return {
+        component: {"block_count": len(ids), "block_ids": ids}
+        for component, ids in grouped.items()
+    }
+
+
+def build_question_component_payloads(
+    evidence_map: dict[str, Any],
+    *,
+    max_component_chars: int = 6000,
+) -> list[dict[str, Any]]:
+    """Build complete question bundles for a future component-level evaluator."""
+    if evidence_map.get("student_code_executed") is True:
+        raise ValueError("Input evidence map claims student code was executed; refusing to continue")
+    if max_component_chars < 1:
+        raise ValueError("max_component_chars must be >= 1")
+    payloads: list[dict[str, Any]] = []
+    for question in evidence_map.get("questions", []) or []:
+        if not isinstance(question, dict):
+            continue
+        components = question.get("component_blocks") or {}
+        component_payload: dict[str, list[dict[str, Any]]] = {}
+        for component in ("question", "question_copy", "code", "output", "explanation", "ai_log"):
+            rows = components.get(component, []) if isinstance(components, dict) else []
+            if not isinstance(rows, list):
+                rows = []
+            component_payload[component] = [
+                {
+                    "block_id": str(block.get("block_id") or ""),
+                    "source_text": str(block.get("source_text") or "")[:max_component_chars],
+                    "output_text": str(block.get("output_text") or "")[:max_component_chars],
+                    "page_number": block.get("page_number"),
+                    "metadata": block.get("metadata") or {},
+                }
+                for block in rows
+                if isinstance(block, dict)
+            ]
+        payloads.append({
+            "question_id": question.get("question_id"),
+            "question_number": question.get("question_number"),
+            "question_title": question.get("question_title", ""),
+            "requirements": [
+                {
+                    "requirement_id": req.get("requirement_id"),
+                    "requirement_text": get_requirement_text(req),
+                    "requirement_type": req.get("requirement_type") or req.get("source_category"),
+                }
+                for req in question.get("requirements", []) or []
+                if isinstance(req, dict)
+            ],
+            "components": component_payload,
+            "missing_components": list(question.get("missing_components") or []),
+            "ai_log_present": bool(question.get("ai_log_present")),
+            "ai_log_is_scoring_evidence": False,
+            "mapping_status": question.get("mapping_status"),
+        })
+    return payloads
+
 
 def evaluate_evidence_map(
     evidence_map: dict[str, Any],
@@ -619,12 +1248,25 @@ def evaluate_evidence_map(
                     "requirement_text": get_requirement_text(req),
                     "original_source_text": req.get("source_text") or "",
                     "context_complete": context_complete,
+                    "allowed_evidence_block_ids": sorted(context_by_req[req_id][2]),
                     "evidence_blocks": selected,
+                    "evidence_bundle": _bundle_summary(selected),
                 })
             if before_request_callback is not None:
                 before_request_callback(len(batch))
             raw_response = client.chat_json({"requirements_to_assess": batch_payloads})
-            assessment_list = raw_response.get("assessments", []) if isinstance(raw_response, dict) else []
+            assessment_list = normalize_assessment_response(
+                raw_response,
+                [str(req.get("requirement_id") or "") for req in batch],
+            )["assessments"]
+            assessment_list = _repair_missing_assessments(
+                client, batch_payloads, assessment_list, before_request_callback
+            )
+            assessment_list = _repair_invalid_quote_assessments(
+                client, batch_payloads, assessment_list, context_by_req,
+                q_blocks, getattr(client, "model", "llm-provider"),
+                before_request_callback,
+            )
             raw_by_id: dict[str, dict[str, Any]] = {}
             if isinstance(assessment_list, list):
                 for item in assessment_list:
@@ -637,6 +1279,8 @@ def evaluate_evidence_map(
                     raw_by_id.get(req_id, {}), req, q_blocks, supplied, context_complete,
                     getattr(client, "model", "llm-provider")
                 )
+                diagnostic = _evidence_diagnostic(req, selected, context_complete, result)
+                result["evidence_diagnostic"] = diagnostic
                 if not selected:
                     result["status"] = "needs_review"
                     result["rationale"] = "No evidence blocks are available for this question."
@@ -662,17 +1306,32 @@ def evaluate_evidence_map(
                 "requirement_type": req.get("requirement_type") or req.get("source_category"),
                 "requirement_text": get_requirement_text(req),
                 "original_source_text": req.get("source_text") or "",
-                "context_complete": complete, "evidence_blocks": selected,
+                "context_complete": complete,
+                "allowed_evidence_block_ids": sorted(ctx[rid][2]),
+                "evidence_blocks": selected,
+                "evidence_bundle": _bundle_summary(selected),
             })
         if before_request_callback is not None:
             before_request_callback(len(batch))
         raw_response = client.chat_json({"requirements_to_assess": payloads})
-        assessment_list = raw_response.get("assessments", []) if isinstance(raw_response, dict) else []
+        assessment_list = normalize_assessment_response(
+            raw_response,
+            [str(req.get("requirement_id") or "") for req in batch],
+        )["assessments"]
+        assessment_list = _repair_missing_assessments(
+            client, payloads, assessment_list, before_request_callback
+        )
+        assessment_list = _repair_invalid_quote_assessments(
+            client, payloads, assessment_list, ctx, all_blocks,
+            getattr(client, "model", "llm-provider"),
+            before_request_callback,
+        )
         by_id = {str(x.get("requirement_id")): x for x in assessment_list if isinstance(x, dict) and x.get("requirement_id") is not None}
         for req in batch:
             rid = str(req.get("requirement_id") or "")
             selected, complete, supplied = ctx[rid]
             result = validate_assessment(by_id.get(rid, {}), req, all_blocks, supplied, complete, getattr(client, "model", "llm-provider"))
+            result["evidence_diagnostic"] = _evidence_diagnostic(req, selected, complete, result)
             if not selected:
                 result.update(status="needs_review", rationale="No evidence blocks are available.", confidence=0.0, evidence_sufficient=False)
             result_by_id[rid] = result

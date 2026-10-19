@@ -1,0 +1,9 @@
+{
+  "submission": {"filename": "synthetic_student.ipynb"},
+  "segments": [
+    {"segment_id": "cell_0001", "position": 0, "original_type": "markdown", "content": "## Question 1: Data Preprocessing"},
+    {"segment_id": "cell_0002", "position": 1, "original_type": "code", "content": "df = load_data()", "outputs": [{"output_type": "stream", "text": "rows: 500\n"}]},
+    {"segment_id": "cell_0003", "position": 2, "original_type": "markdown", "content": "## Question 2: Regression"},
+    {"segment_id": "cell_0004", "position": 3, "original_type": "code", "content": "model.fit(X, y)"}
+  ]
+}

@@ -104,7 +104,12 @@ def _split_atomic_phrases(text: str) -> list[tuple[str, int, int]]:
         if re.match(r"^" + ACTION_PATTERN, left_clause, re.I):
             candidates.append((match.start(), match.end()))
 
-    connector_pattern = re.compile(r"\b(?:and then|then|and|also)\s+(?=" + ACTION_PATTERN + r")", re.I)
+    connector_pattern = re.compile(
+        r"\b(?:and then|then|and|also)\s+(?="
+        + ACTION_PATTERN
+        + r"\s+(?!(?:the\s+)?same\b|(?:data|dataset|datasets|set)\b))",
+        re.I,
+    )
     candidates.extend((match.start(), match.end()) for match in connector_pattern.finditer(text))
     candidates.extend((match.start(), match.end()) for match in TEMPORAL_SENTENCE_RE.finditer(text))
     sentence_boundary_pattern = re.compile(r"(?<=[.!?])\s*(?=[A-Z0-9])")

@@ -1,0 +1,14 @@
+{
+  "manifest_version": "1.0.0",
+  "documents": [
+    {
+      "document_id": "example-reviewed-question-paper_0123456789ab",
+      "annotation_path": "Example-QP.annotation.json",
+      "split": "train",
+      "group_id": "example-paper-family",
+      "subject": null,
+      "course": null,
+      "notes": "Replace with a real document only after review and grouping."
+    }
+  ]
+}

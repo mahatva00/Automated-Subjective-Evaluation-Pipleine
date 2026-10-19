@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Question-only scope ledger",
+  "type": "object",
+  "required": ["scope_version", "document_id", "source_text_sha256", "text_length", "policy_version", "segments"],
+  "properties": {
+    "scope_version": {"const": "1.0.0"},
+    "document_id": {"type": "string", "minLength": 1},
+    "annotation_filename": {"type": "string"},
+    "source_filename": {"type": ["string", "null"]},
+    "source_text_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "text_length": {"type": "integer", "minimum": 1},
+    "policy_version": {"const": "question_scope_policy_v1.2"},
+    "segments": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["segment_id", "start_char", "end_char", "text_sha256", "text", "scope_status", "question_id", "review_status", "reviewer", "review_date"],
+        "properties": {
+          "segment_id": {"type": "string", "minLength": 1},
+          "start_char": {"type": "integer", "minimum": 0},
+          "end_char": {"type": "integer", "minimum": 1},
+          "text_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "text": {"type": "string"},
+          "scope_status": {"enum": ["in_scope", "out_of_scope", "pending", "separator"]},
+          "question_id": {"type": ["string", "null"]},
+          "reason": {"type": "string"},
+          "review_status": {"enum": ["pending", "reviewed", "not_required"]},
+          "reviewer": {"type": "string"},
+          "review_date": {"type": "string"}
+        }
+      }
+    }
+  }
+}

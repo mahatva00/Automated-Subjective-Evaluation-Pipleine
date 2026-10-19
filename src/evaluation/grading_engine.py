@@ -1,4 +1,4 @@
-"""Conservative deterministic scoring over static assessment statuses.
+﻿"""Conservative deterministic scoring over static assessment statuses.
 
 Never infers credit factors that the supplied policy did not state. The score
 is marked provisional while any requirement is unresolved or approval is needed.
@@ -8,6 +8,8 @@ from collections import Counter, defaultdict
 from typing import Any
 
 VALID_STATUSES = {"complete", "partial", "absent", "needs_review"}
+COMPONENTS = ("code", "explanation", "output")
+COMPONENT_CREDITS = {"complete": 1.0, "partial": 0.5, "absent": 0.0}
 
 
 def _all_evaluations(evaluation: dict[str, Any]) -> list[dict[str, Any]]:
@@ -168,4 +170,116 @@ def score_evaluation(evaluation: dict[str, Any], requirements: dict[str, Any], p
         result["notes"].append("Unresolved requirements contribute no awarded points; percentage is a lower bound, not a final grade.")
     if approval_required:
         result["notes"].append("Teacher approval remains required by policy.")
+    return result
+
+
+def score_component_evaluation(
+    evaluation: dict[str, Any],
+    policy: dict[str, Any],
+) -> dict[str, Any]:
+    """Score question-level component statuses from explicit policy weights."""
+    component_policy = policy.get("question_component_policy")
+    result: dict[str, Any] = {
+        "schema_version": "1.0",
+        "artifact_type": "component_policy_scoring_result",
+        "numeric_scoring_enabled": False,
+        "score_status": "not_scored",
+        "score": None,
+        "max_marks": None,
+        "percentage": None,
+        "component_rows": [],
+        "notes": [],
+    }
+    if not isinstance(component_policy, dict) or not component_policy:
+        result["notes"].append("Assessment policy does not provide per-question component weights.")
+        return result
+    if evaluation.get("student_code_executed") is not False:
+        result["notes"].append("Static-only guardrail failed; numeric scoring disabled.")
+        return result
+
+    question_evaluations = {
+        str(question.get("question_number")): question
+        for question in evaluation.get("questions", []) or []
+        if isinstance(question, dict) and question.get("question_number") is not None
+    }
+    rows: list[dict[str, Any]] = []
+    pending = False
+    invalid = False
+    score = 0.0
+    max_marks = 0.0
+    for question_number, allocation in component_policy.items():
+        if not isinstance(allocation, dict):
+            invalid = True
+            result["notes"].append(f"Invalid component policy for question Q{question_number}.")
+            continue
+        marks = allocation.get("marks")
+        weights = allocation.get("component_weights")
+        if isinstance(marks, bool) or not isinstance(marks, (int, float)) or marks < 0:
+            invalid = True
+            result["notes"].append(f"Missing or invalid marks for question Q{question_number}.")
+            continue
+        if not isinstance(weights, dict) or any(
+            component not in weights
+            or isinstance(weights[component], bool)
+            or not isinstance(weights[component], (int, float))
+            or not 0 <= float(weights[component]) <= 1
+            for component in COMPONENTS
+        ):
+            invalid = True
+            result["notes"].append(f"Missing or invalid component weights for question Q{question_number}.")
+            continue
+        question = question_evaluations.get(str(question_number), {})
+        raw_statuses = question.get("component_evaluations", {})
+        if isinstance(raw_statuses, list):
+            statuses = {
+                str(item.get("component")): item.get("status")
+                for item in raw_statuses
+                if isinstance(item, dict)
+            }
+        elif isinstance(raw_statuses, dict):
+            statuses = {
+                component: value.get("status") if isinstance(value, dict) else value
+                for component, value in raw_statuses.items()
+            }
+        else:
+            statuses = {}
+        for component in COMPONENTS:
+            allocation_marks = float(marks) * float(weights[component])
+            status = statuses.get(component, "absent")
+            if status not in COMPONENT_CREDITS and status != "needs_review":
+                invalid = True
+                result["notes"].append(
+                    f"Unknown status {status!r} for Q{question_number} {component}."
+                )
+                continue
+            awarded = None if status == "needs_review" else allocation_marks * COMPONENT_CREDITS[status]
+            if status == "needs_review":
+                pending = True
+            else:
+                score += float(awarded)
+            max_marks += allocation_marks
+            rows.append({
+                "question_number": str(question_number),
+                "component": component,
+                "status": status,
+                "weight": float(weights[component]),
+                "allocated_marks": round(allocation_marks, 3),
+                "awarded_marks": round(awarded, 3) if awarded is not None else None,
+            })
+
+    if invalid or not rows:
+        if not rows:
+            result["notes"].append("No component marks could be allocated.")
+        result["component_rows"] = rows
+        return result
+    result.update({
+        "numeric_scoring_enabled": True,
+        "score_status": "provisional" if pending else "ready_for_teacher_approval",
+        "score": round(score, 3),
+        "max_marks": round(max_marks, 3),
+        "percentage": round((score / max_marks) * 100, 2) if max_marks else None,
+        "component_rows": rows,
+        "pending_review_components": sum(row["status"] == "needs_review" for row in rows),
+        "teacher_approval_required": bool(policy.get("teacher_approval_required", True)),
+    })
     return result

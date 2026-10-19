@@ -13,6 +13,7 @@ from typing import Any
 
 VALID_STATUSES = ("complete", "partial", "absent")
 POLICY_SUFFIXES = {".json", ".txt", ".md", ".markdown", ".pdf", ".docx"}
+COMPONENT_NAMES = ("code", "explanation", "output")
 
 
 def _sha256(path: Path) -> str:
@@ -102,6 +103,101 @@ def _strictness(payload: Any, text: str) -> str:
     return next(iter(found)) if len(found) == 1 else "unspecified"
 
 
+def _normalise_component_weights(values: dict[str, Any]) -> dict[str, float] | None:
+    result: dict[str, float] = {}
+    for component in COMPONENT_NAMES:
+        value = values.get(component)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        number = float(value)
+        if number > 1.0:
+            number /= 100.0
+        if not 0.0 <= number <= 1.0:
+            return None
+        result[component] = number
+    if abs(sum(result.values()) - 1.0) > 0.001:
+        return None
+    return result
+
+
+def _extract_subquestion_marks(section: str, question_id: str) -> dict[str, float]:
+    row_pattern = re.compile(
+        rf"^\s*{re.escape(question_id)}\(([a-z])\)\s+(?:[A-Z]\d+\s+)?"
+        r"(\d+(?:\.\d+)?)\s+",
+        re.I | re.M,
+    )
+    return {
+        f"{question_id}({match.group(1).lower()})": float(match.group(2))
+        for match in row_pattern.finditer(section)
+    }
+
+
+def _extract_component_policy(payload: Any, text: str) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    """Extract explicit question/component allocations without guessing missing marks."""
+    questions: dict[str, dict[str, Any]] = {}
+    warnings: list[str] = []
+
+    if isinstance(payload, dict):
+        raw_questions = payload.get("questions")
+        if isinstance(raw_questions, dict):
+            question_items = raw_questions.items()
+        elif isinstance(raw_questions, list):
+            question_items = (
+                (str(item.get("question_id") or item.get("id")), item)
+                for item in raw_questions
+                if isinstance(item, dict)
+            )
+        else:
+            question_items = ()
+        for question_id, item in question_items:
+            if not isinstance(item, dict):
+                continue
+            weights = item.get("components") or item.get("component_weights")
+            normalised = _normalise_component_weights(weights) if isinstance(weights, dict) else None
+            marks = item.get("marks")
+            if normalised is not None and isinstance(marks, (int, float)) and not isinstance(marks, bool) and marks >= 0:
+                questions[str(question_id)] = {
+                    "marks": float(marks),
+                    "component_weights": normalised,
+                    "subquestion_marks": {},
+                }
+        if questions:
+            return questions, warnings
+
+    heading_pattern = re.compile(
+        r"^\s*Q\s*(\d+)\b.*?\[\s*(\d+(?:\.\d+)?)\s*marks?\s*\]\s*$",
+        re.I | re.M,
+    )
+    split_pattern = re.compile(
+        r"^\s*Split\s*:\s*Code\s*(\d+(?:\.\d+)?)\s*%\s*,\s*"
+        r"Explanation\s*(\d+(?:\.\d+)?)\s*%\s*,\s*Output\s*(\d+(?:\.\d+)?)\s*%\s*$",
+        re.I | re.M,
+    )
+    headings = list(heading_pattern.finditer(text))
+    for index, heading in enumerate(headings):
+        question_id = heading.group(1)
+        section_end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
+        section = text[heading.end():section_end]
+        split = split_pattern.search(section)
+        if split is None:
+            warnings.append(f"Question Q{question_id} has no complete Code/Explanation/Output split.")
+            continue
+        weights = _normalise_component_weights({
+            "code": float(split.group(1)),
+            "explanation": float(split.group(2)),
+            "output": float(split.group(3)),
+        })
+        if weights is None:
+            warnings.append(f"Question Q{question_id} has component weights that do not sum to 100%.")
+            continue
+        questions[question_id] = {
+            "marks": float(heading.group(2)),
+            "component_weights": weights,
+            "subquestion_marks": _extract_subquestion_marks(section, question_id),
+        }
+    return questions, warnings
+
+
 def parse_assessment_policy(path: str | Path | None, input_root: str | Path | None = None,
                             parsed_pdf: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return a normalized policy; unresolved scoring remains explicitly unresolved."""
@@ -111,6 +207,7 @@ def parse_assessment_policy(path: str | Path | None, input_root: str | Path | No
             "source_filename": None, "source_sha256": None, "source_format": None,
             "strictness": "unspecified", "credit_map": None,
             "numeric_scoring_enabled": False, "mark_allocation": {"mode": "per_source_node_equal_split"},
+            "question_component_policy": {}, "component_scoring_enabled": False,
             "teacher_approval_required": True, "raw_text": "", "warnings": ["No assessment policy file was identified; numeric grading is disabled."],
         }
     source = Path(path).resolve()
@@ -141,6 +238,7 @@ def parse_assessment_policy(path: str | Path | None, input_root: str | Path | No
         raw_text = source.read_text(encoding="utf-8-sig")
 
     credit_map = _extract_explicit_credit_map(payload, raw_text)
+    question_component_policy, component_warnings = _extract_component_policy(payload, raw_text)
     mark_allocation: dict[str, Any] = {"mode": "per_source_node_equal_split"}
     teacher_approval_required = True
     if isinstance(payload, dict):
@@ -154,7 +252,7 @@ def parse_assessment_policy(path: str | Path | None, input_root: str | Path | No
         val = payload.get("teacher_approval_required", nested.get("teacher_approval_required", True))
         teacher_approval_required = val if isinstance(val, bool) else True
 
-    warnings = list(diagnostics)
+    warnings = list(diagnostics) + component_warnings
     if credit_map is None:
         warnings.append("No complete numeric credit map for complete/partial/absent was found; only fulfillment summaries will be reported, not numeric marks.")
     return {
@@ -162,6 +260,8 @@ def parse_assessment_policy(path: str | Path | None, input_root: str | Path | No
         "source_filename": source.name, "source_path": str(source), "source_sha256": _sha256(source),
         "source_format": suffix.lstrip("."), "strictness": _strictness(payload, raw_text),
         "credit_map": credit_map, "numeric_scoring_enabled": credit_map is not None,
+        "question_component_policy": question_component_policy,
+        "component_scoring_enabled": bool(question_component_policy),
         "mark_allocation": mark_allocation, "teacher_approval_required": teacher_approval_required,
         "raw_text": raw_text, "warnings": warnings,
     }
