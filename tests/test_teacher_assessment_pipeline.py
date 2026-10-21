@@ -8,9 +8,10 @@ from unittest.mock import patch
 import pymupdf
 
 from src.policy.policy_parser import parse_assessment_policy
-from src.evaluation.grading_engine import score_component_evaluation, score_evaluation
+from src.evaluation.grading_engine import score_component_evaluation, score_evaluation, score_question_statuses
 from src.reporting.student_report import build_student_report, render_student_report
 from src.orchestration.teacher_assessment import discover_input_files, run_teacher_assessment
+from src.evaluation.static_answer_evaluator import ProviderRateLimitError
 
 
 class FakeClient:
@@ -109,6 +110,7 @@ class TeacherPipelineTests(unittest.TestCase):
             )
             policy = parse_assessment_policy(p, td)
             self.assertTrue(policy["component_scoring_enabled"])
+            self.assertTrue(policy["numeric_scoring_enabled"])
             self.assertEqual(policy["question_component_policy"]["1"]["marks"], 10.0)
             self.assertEqual(
                 policy["question_component_policy"]["1"]["component_weights"],
@@ -119,6 +121,17 @@ class TeacherPipelineTests(unittest.TestCase):
                 {},
             )
             self.assertEqual(policy["question_component_policy"]["2"]["marks"], 30.0)
+
+    def test_text_policy_extracts_best_question_count(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "assessment_policy.txt"
+            p.write_text(
+                "Q1. A [10 marks]\nSplit: Code 50%, Explanation 25%, Output 25%\n"
+                "Best five questions are counted: 5 x 10 = 50 marks.",
+                encoding="utf-8",
+            )
+            policy = parse_assessment_policy(p, td)
+            self.assertEqual(policy["best_question_count"], 5)
 
     def test_markdown_policy_rejects_incomplete_component_split(self):
         with tempfile.TemporaryDirectory() as td:
@@ -174,11 +187,69 @@ class TeacherPipelineTests(unittest.TestCase):
             },
         )
         self.assertEqual(result["max_marks"], 10.0)
-        self.assertEqual(result["score"], 6.25)
+        self.assertEqual(result["score"], 6.75)
         self.assertEqual(
             next(row for row in result["component_rows"] if row["component"] == "explanation")["awarded_marks"],
             0.0,
         )
+
+    def test_question_status_scoring_uses_70_percent_partial_and_best_questions(self):
+        policy = {
+            "best_question_count": 1,
+            "question_component_policy": {
+                "1": {
+                    "marks": 10,
+                    "component_weights": {"code": 0.5, "explanation": 0.25, "output": 0.25},
+                },
+                "2": {
+                    "marks": 10,
+                    "component_weights": {"code": 0.4, "explanation": 0.3, "output": 0.3},
+                },
+            },
+        }
+        result = score_question_statuses(
+            [
+                {"requirement_id": "r1", "question_number": "1", "status": "complete"},
+                {"requirement_id": "r2", "question_number": "1", "status": "needs_review"},
+                {"requirement_id": "r3", "question_number": "2", "status": "absent"},
+            ],
+            policy,
+        )
+        self.assertTrue(result["numeric_scoring_enabled"])
+        self.assertEqual(result["score"], 8.5)
+        self.assertEqual(result["max_marks"], 10.0)
+        self.assertEqual(result["percentage"], 85.0)
+        self.assertEqual(result["score_status"], "provisional")
+        self.assertEqual(result["defaulted_needs_review_count"], 1)
+        self.assertEqual(result["status_credit_factors"]["partial"], 0.7)
+        q1 = next(row for row in result["per_question"] if row["question_number"] == "1")
+        self.assertTrue(q1["counted_in_final"])
+        self.assertEqual(q1["component_scores"][0]["score"], 4.25)
+        self.assertFalse(next(row for row in result["per_question"] if row["question_number"] == "2")["counted_in_final"])
+
+    def test_teacher_selected_final_status_resolves_needs_review_without_changing_raw_status(self):
+        result = score_question_statuses(
+            [
+                {
+                    "requirement_id": "r1",
+                    "question_number": "1",
+                    "status": "needs_review",
+                    "final_status": "absent",
+                    "final_status_source": "teacher_selected",
+                },
+            ],
+            {
+                "question_component_policy": {
+                    "1": {
+                        "marks": 10,
+                        "component_weights": {"code": 0.5, "explanation": 0.25, "output": 0.25},
+                    },
+                },
+            },
+        )
+        self.assertEqual(result["score"], 0.0)
+        self.assertEqual(result["score_status"], "ready_for_teacher_approval")
+        self.assertEqual(result["defaulted_needs_review_count"], 0)
 
     def test_component_scoring_keeps_needs_review_provisional(self):
         result = score_component_evaluation(
@@ -230,7 +301,17 @@ class TeacherPipelineTests(unittest.TestCase):
             ], "metadata": {}, "nbformat": 4, "nbformat_minor": 5}), encoding="utf-8")
             policy_dir.mkdir(parents=True)
             policy_file = policy_dir / "marking_policy.json"
-            policy_file.write_text(json.dumps({"strictness": "balanced", "credit_map": {"complete": 1, "partial": 0.5, "absent": 0}}), encoding="utf-8")
+            policy_file.write_text(json.dumps({
+                "strictness": "balanced",
+                "credit_map": {"complete": 1, "partial": 0.5, "absent": 0},
+                "best_question_count": 1,
+                "questions": {
+                    "1": {
+                        "marks": 10,
+                        "components": {"code": 0.5, "explanation": 0.25, "output": 0.25},
+                    },
+                },
+            }), encoding="utf-8")
             output_base = Path(td) / "results"
             clients = []
             def factory(**_):
@@ -241,6 +322,8 @@ class TeacherPipelineTests(unittest.TestCase):
             self.assertEqual(report["summary"]["students_discovered"], 1)
             self.assertEqual(report["summary"]["students_assessed"], 1)
             self.assertFalse(report["summary"]["student_code_executed"])
+            self.assertTrue(report["student_results"][0]["score"] is not None)
+            self.assertEqual(report["student_results"][0]["max_marks"], 10.0)
             audit_stages = [s for s in report["stages"] if s["stage"] == "static_evaluation_audit"]
             self.assertEqual(len(audit_stages), 1)
             self.assertEqual(audit_stages[0]["status"], "passed")
@@ -268,7 +351,9 @@ class TeacherPipelineTests(unittest.TestCase):
             )
             self.assertEqual(evaluation["global_evaluations"], [])
             self.assertTrue((run_dir / "RUN_REPORT.json").is_file())
-            self.assertTrue((run_dir / "ASSESSMENT_SUMMARY.html").is_file())
+            batch_html = (run_dir / "ASSESSMENT_SUMMARY.html").read_text(encoding="utf-8")
+            self.assertIn("Provisional points", batch_html)
+            self.assertIn("Review report", batch_html)
             student_jsons = list((run_dir / "reports").glob("*.report.json"))
             student_htmls = list((run_dir / "reports").glob("*.report.html"))
             self.assertEqual(len(student_jsons), 1)
@@ -276,10 +361,73 @@ class TeacherPipelineTests(unittest.TestCase):
             saved = json.loads(student_jsons[0].read_text(encoding="utf-8"))
             self.assertFalse(saved["student_code_executed"])
             self.assertEqual(saved["assessment_status"], "completed")
+            self.assertTrue(saved["scoring"]["numeric_scoring_enabled"])
+            self.assertEqual(saved["scoring"]["max_marks"], 10.0)
+            self.assertEqual(saved["scoring"]["best_question_count"], 1)
             self.assertGreater(clients[0].call_count, 0)
             resumed = run_teacher_assessment(root, output_base, provider="ollama", resume_run_dir=run_dir, client_factory=factory)
             self.assertEqual(resumed["run_dir"], str(run_dir))
             self.assertEqual(clients[1].call_count, 0, "resume should reuse compatible checkpointed requirement assessments")
+
+    def test_provider_rate_limit_pauses_later_student_requests(self):
+        class RateLimitedClient:
+            model = "rate-limit-test-model"
+
+            def __init__(self):
+                self.call_count = 0
+
+            def chat_json(self, _payload):
+                self.call_count += 1
+                raise ProviderRateLimitError("temporary HTTP 429 limit")
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "teacher_input"
+            make_pdf(
+                root / "Question Paper" / "Assignment-QP.pdf",
+                "Lab Assessment\n1. Load the dataset and display the first records. [2 marks]",
+            )
+            submissions = root / "Student Submissions"
+            submissions.mkdir(parents=True)
+            for roll_number in ("23MCA1006", "23MCA1015"):
+                path = submissions / f"{roll_number}_Assignment.ipynb"
+                path.write_text(json.dumps({
+                    "cells": [
+                        {
+                            "cell_type": "markdown",
+                            "metadata": {},
+                            "source": ["1. Load the dataset and display the first records."],
+                        },
+                        {
+                            "cell_type": "code",
+                            "metadata": {},
+                            "execution_count": 1,
+                            "outputs": [],
+                            "source": ["df.head()"],
+                        },
+                    ],
+                    "metadata": {},
+                    "nbformat": 4,
+                    "nbformat_minor": 5,
+                }), encoding="utf-8")
+            client = RateLimitedClient()
+
+            report = run_teacher_assessment(
+                root,
+                Path(td) / "results",
+                provider="ollama",
+                client_factory=lambda **_: client,
+            )
+
+            evaluation_stages = [
+                stage for stage in report["stages"]
+                if stage["stage"] == "static_answer_evaluation"
+            ]
+            self.assertEqual(client.call_count, 1)
+            self.assertEqual(
+                [stage["status"] for stage in evaluation_stages],
+                ["paused_rate_limited", "skipped_rate_limited"],
+            )
+            self.assertTrue(any("rate-limit retries were exhausted" in warning for warning in report["warnings"]))
 
     def test_report_is_explicitly_not_an_official_grade(self):
         report = build_student_report({"report_id": "test", "source_filename": "sample.ipynb"},
@@ -289,6 +437,35 @@ class TeacherPipelineTests(unittest.TestCase):
         rendered = render_student_report(report)
         self.assertIn("No official grade has been issued", rendered)
         self.assertIn("student-submitted code was not executed", rendered)
+        self.assertIn("Download reviewed JSON", rendered)
+
+    def test_report_preserves_raw_status_and_initializes_review_status_for_teacher(self):
+        report = build_student_report(
+            {"report_id": "review-test"},
+            {
+                "student_code_executed": False,
+                "questions": [{
+                    "question_number": "1",
+                    "evaluations": [{
+                        "requirement_id": "r1",
+                        "status": "needs_review",
+                        "rationale": "Evidence is insufficient.",
+                    }],
+                }],
+            },
+            {"numeric_scoring_enabled": True, "score_status": "provisional", "status_credit_factors": {"partial": 0.7}},
+            {"question_component_policy": {}},
+            {},
+        )
+        row = report["requirements"][0]
+        self.assertEqual(row["status"], "needs_review")
+        self.assertEqual(row["final_status"], "partial")
+        self.assertEqual(row["final_status_source"], "default_partial_pending_teacher_review")
+        rendered = render_student_report(report)
+        self.assertIn('class="final-status"', rendered)
+        self.assertIn("report-data", rendered)
+        self.assertIn("teacher_selected", rendered)
+        self.assertIn("score-total", rendered)
 
     def test_report_propagates_question_component_findings(self):
         evidence_map = {
@@ -315,6 +492,12 @@ class TeacherPipelineTests(unittest.TestCase):
                 }],
             }],
             "summary": {"mapped_blocks": 3},
+            "unassigned_evidence_blocks": [{
+                "block_id": "cover_1",
+                "page_number": 1,
+                "mapping_method": "no_question_anchor",
+                "source_text": "Unmapped <cover> text",
+            }],
         }
         report = build_student_report(
             {"report_id": "test", "source_filename": "sample.ipynb"},
@@ -329,6 +512,15 @@ class TeacherPipelineTests(unittest.TestCase):
         self.assertEqual(component["missing_components"], ["output", "explanation"])
         self.assertEqual(component["requirements"][0]["linked_evidence_block_ids"], ["c1"])
         self.assertIn("Answer component extraction", render_student_report(report))
+        self.assertEqual(
+            report["unassigned_evidence_blocks"][0]["block_id"],
+            "cover_1",
+        )
+        rendered = render_student_report(report)
+        self.assertIn("<footer>", rendered)
+        self.assertIn("Unassigned evidence", rendered)
+        self.assertIn("Unmapped &lt;cover&gt; text", rendered)
+        self.assertNotIn("Unmapped <cover> text", rendered)
 
 
 if __name__ == "__main__":

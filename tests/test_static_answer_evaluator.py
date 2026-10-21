@@ -1,8 +1,13 @@
+import io
+import json
 import unittest
+import urllib.error
+from types import SimpleNamespace
 from unittest.mock import patch
 from src.evaluation.static_answer_evaluator import (
     build_question_component_payloads,
-    select_evidence_blocks, validate_assessment, evaluate_evidence_map, GeminiClient
+    select_evidence_blocks, validate_assessment, evaluate_evidence_map, GeminiClient, GroqClient, OllamaClient,
+    IncompleteModelResponseError,
 )
 from src.evaluation.static_answer_evaluator import (
     _evidence_diagnostic, normalize_assessment_response,
@@ -580,6 +585,72 @@ class StaticAnswerEvaluatorTests(unittest.TestCase):
         self.assertEqual(len(client.calls), 2)
         self.assertEqual(len(client.calls[1]["requirements_to_assess"]), 1)
 
+    def test_truncated_multi_requirement_batch_retries_only_that_batch_singly(self):
+        class TruncatedThenCompleteClient:
+            model = "test"
+
+            def __init__(self):
+                self.calls = []
+
+            def chat_json(self, payload):
+                requirements = payload["requirements_to_assess"]
+                self.calls.append([item["requirement_id"] for item in requirements])
+                if len(requirements) > 1:
+                    raise IncompleteModelResponseError("response reached num_predict")
+                return FakeClient().chat_json(payload)
+
+        second = dict(self.req, requirement_id="r2")
+        client = TruncatedThenCompleteClient()
+        requests = []
+        evidence_map = {
+            "student_code_executed": False,
+            "questions": [{
+                "question_id": "q1",
+                "question_number": "1",
+                "evidence_blocks": self.blocks,
+                "requirements": [self.req, second],
+            }],
+        }
+
+        result = evaluate_evidence_map(
+            evidence_map,
+            client,
+            batch_size=2,
+            before_request_callback=requests.append,
+        )
+
+        self.assertEqual(client.calls, [["r1", "r2"], ["r1"], ["r2"]])
+        self.assertEqual(requests, [2, 1, 1])
+        self.assertEqual(
+            [row["status"] for row in result["questions"][0]["evaluations"]],
+            ["complete", "complete"],
+        )
+
+    def test_truncated_single_requirement_request_is_not_retried(self):
+        class AlwaysTruncatedClient:
+            model = "test"
+
+            def __init__(self):
+                self.calls = 0
+
+            def chat_json(self, payload):
+                self.calls += 1
+                raise IncompleteModelResponseError("response reached num_predict")
+
+        client = AlwaysTruncatedClient()
+        evidence_map = {
+            "student_code_executed": False,
+            "questions": [{
+                "question_id": "q1",
+                "question_number": "1",
+                "evidence_blocks": self.blocks,
+                "requirements": [self.req],
+            }],
+        }
+        with self.assertRaises(IncompleteModelResponseError):
+            evaluate_evidence_map(evidence_map, client, batch_size=1)
+        self.assertEqual(client.calls, 1)
+
     def test_invalid_quote_is_retried_as_single_requirement(self):
         class InvalidThenRepairClient:
             model = "test"
@@ -646,6 +717,106 @@ class StaticAnswerEvaluatorTests(unittest.TestCase):
         request = call.call_args.args[0]
         self.assertEqual(request.full_url, "https://generativelanguage.googleapis.com/v1beta/interactions")
         self.assertEqual(request.get_header("X-goog-api-key"), "test-key")
+
+    def test_gemini_retries_temporary_rate_limit_and_honors_retry_after(self):
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self):
+                return b'{"steps":[{"type":"model_output","content":[{"type":"text","text":"{\\"assessments\\": []}"}]}]}'
+
+        rate_limited = urllib.error.HTTPError(
+            "https://generativelanguage.googleapis.com/v1beta/interactions",
+            429,
+            "Too Many Requests",
+            {"Retry-After": "2"},
+            io.BytesIO(b"too many requests"),
+        )
+        client = GeminiClient(model="gemini-3.8-flash", api_key="test-key", timeout=2)
+        with patch(
+            "src.evaluation.static_answer_evaluator.urllib.request.urlopen",
+            side_effect=[rate_limited, Response()],
+        ) as request, patch("src.evaluation.static_answer_evaluator.time.sleep") as sleep:
+            result = client.chat_json({"requirements_to_assess": []})
+        self.assertEqual(result, {"assessments": []})
+        self.assertEqual(request.call_count, 2)
+        sleep.assert_called_once_with(2.5)
+
+    def test_ollama_retries_http_429_and_stops_retrying_after_daily_quota_error(self):
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self):
+                payload = {
+                    "message": {"content": '{"assessments": []}'},
+                    "done": True,
+                    "prompt_eval_count": 1,
+                    "eval_count": 1,
+                }
+                return json.dumps(payload).encode("utf-8")
+
+        client = OllamaClient(model="qwen2.5:7b-instruct", timeout=2)
+        temporary = urllib.error.HTTPError(
+            "http://localhost:11434/api/chat",
+            429,
+            "Too Many Requests",
+            {},
+            io.BytesIO(b"too many requests"),
+        )
+        with patch(
+            "src.evaluation.static_answer_evaluator.urllib.request.urlopen",
+            side_effect=[temporary, Response()],
+        ) as request, patch("src.evaluation.static_answer_evaluator.time.sleep") as sleep:
+            result = client.chat_json({"requirements_to_assess": []})
+        self.assertEqual(result, {"assessments": []})
+        self.assertEqual(request.call_count, 2)
+        sleep.assert_called_once_with(1.0)
+
+        quota = urllib.error.HTTPError(
+            "http://localhost:11434/api/chat",
+            429,
+            "Too Many Requests",
+            {},
+            io.BytesIO(b"daily quota exceeded"),
+        )
+        with patch(
+            "src.evaluation.static_answer_evaluator.urllib.request.urlopen",
+            side_effect=quota,
+        ) as request, patch("src.evaluation.static_answer_evaluator.time.sleep") as sleep:
+            with self.assertRaisesRegex(RuntimeError, "non-temporary quota limit"):
+                client.chat_json({"requirements_to_assess": []})
+        self.assertEqual(request.call_count, 1)
+        sleep.assert_not_called()
+
+    def test_groq_retries_temporary_429_and_preserves_daily_quota_stop(self):
+        class RateLimitError(Exception):
+            status_code = 429
+            response = SimpleNamespace(headers={"Retry-After": "3"})
+
+        message = SimpleNamespace(content='{"assessments": []}')
+        response = SimpleNamespace(choices=[SimpleNamespace(message=message, finish_reason="stop")])
+
+        class Completions:
+            def __init__(self):
+                self.calls = 0
+
+            def create(self, **_):
+                self.calls += 1
+                if self.calls == 1:
+                    raise RateLimitError("too many requests")
+                return response
+
+        completions = Completions()
+        client = GroqClient.__new__(GroqClient)
+        client.model = "test-model"
+        client._client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+        with patch("src.evaluation.static_answer_evaluator.time.sleep") as sleep:
+            result = client.chat_json({"requirements_to_assess": []})
+        self.assertEqual(result, {"assessments": []})
+        self.assertEqual(completions.calls, 2)
+        sleep.assert_called_once_with(3.5)
+        quota = RateLimitError("daily quota exceeded")
+        self.assertIsNone(GroqClient._retry_delay_for_rate_limit(quota, 1))
 
 if __name__ == "__main__":
     unittest.main()

@@ -23,7 +23,8 @@ ACTION_VERBS = (
     "summarize", "summarise", "construct", "verify", "retrieve", "confirm", "execute",
     "add", "include", "provide", "paste", "save", "choose", "attempt", "upload",
     "ensure", "download", "follow", "answer", "complete", "submit", "set", "attach",
-    "keep", "describe", "present", "prepare", "consider", "develop", "obtain", "list",
+    "keep", "describe", "present", "prepare", "consider", "develop", "configure",
+    "deploy", "obtain", "list",
     "specify", "label", "title", "return", "select", "investigate", "fit", "name",
 )
 ACTION_PATTERN = r"(?:" + "|".join(sorted(set(ACTION_VERBS), key=len, reverse=True)) + r")\b"

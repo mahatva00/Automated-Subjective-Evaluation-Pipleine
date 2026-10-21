@@ -1,8 +1,8 @@
 """Parse an assessment policy without inventing unstated scoring rules.
 
 Supported inputs: JSON, TXT, Markdown, PDF and DOCX. The output preserves the
-source text/hash and only enables numeric scoring when credit factors are
-explicitly supplied as numeric values.
+source text/hash and only enables numeric scoring when explicit status credits
+or complete per-question component allocations are available.
 """
 from __future__ import annotations
 import hashlib
@@ -14,6 +14,18 @@ from typing import Any
 VALID_STATUSES = ("complete", "partial", "absent")
 POLICY_SUFFIXES = {".json", ".txt", ".md", ".markdown", ".pdf", ".docx"}
 COMPONENT_NAMES = ("code", "explanation", "output")
+QUESTION_COUNT_WORDS = {
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+}
 
 
 def _sha256(path: Path) -> str:
@@ -101,6 +113,24 @@ def _strictness(payload: Any, text: str) -> str:
             return raw.strip().lower()
     found = {x for x in ("strict", "lenient", "balanced") if re.search(rf"\b{x}\b", text, re.I)}
     return next(iter(found)) if len(found) == 1 else "unspecified"
+
+
+def _extract_best_question_count(payload: Any, text: str) -> int | None:
+    if isinstance(payload, dict):
+        value = payload.get("best_question_count")
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            return value
+
+    match = re.search(
+        r"\bbest\s+(?P<count>\d+|one|two|three|four|five|six|seven|eight|nine|ten)"
+        r"\s+questions?\s+(?:are\s+)?(?:counted|considered|included|selected)\b",
+        text,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    token = match.group("count").casefold()
+    return int(token) if token.isdigit() else QUESTION_COUNT_WORDS[token]
 
 
 def _normalise_component_weights(values: dict[str, Any]) -> dict[str, float] | None:
@@ -208,6 +238,7 @@ def parse_assessment_policy(path: str | Path | None, input_root: str | Path | No
             "strictness": "unspecified", "credit_map": None,
             "numeric_scoring_enabled": False, "mark_allocation": {"mode": "per_source_node_equal_split"},
             "question_component_policy": {}, "component_scoring_enabled": False,
+            "best_question_count": None,
             "teacher_approval_required": True, "raw_text": "", "warnings": ["No assessment policy file was identified; numeric grading is disabled."],
         }
     source = Path(path).resolve()
@@ -239,6 +270,7 @@ def parse_assessment_policy(path: str | Path | None, input_root: str | Path | No
 
     credit_map = _extract_explicit_credit_map(payload, raw_text)
     question_component_policy, component_warnings = _extract_component_policy(payload, raw_text)
+    best_question_count = _extract_best_question_count(payload, raw_text)
     mark_allocation: dict[str, Any] = {"mode": "per_source_node_equal_split"}
     teacher_approval_required = True
     if isinstance(payload, dict):
@@ -253,15 +285,17 @@ def parse_assessment_policy(path: str | Path | None, input_root: str | Path | No
         teacher_approval_required = val if isinstance(val, bool) else True
 
     warnings = list(diagnostics) + component_warnings
-    if credit_map is None:
+    if credit_map is None and not question_component_policy:
         warnings.append("No complete numeric credit map for complete/partial/absent was found; only fulfillment summaries will be reported, not numeric marks.")
     return {
         "schema_version": "1.0", "artifact_type": "normalized_assessment_policy",
         "source_filename": source.name, "source_path": str(source), "source_sha256": _sha256(source),
         "source_format": suffix.lstrip("."), "strictness": _strictness(payload, raw_text),
-        "credit_map": credit_map, "numeric_scoring_enabled": credit_map is not None,
+        "credit_map": credit_map,
+        "numeric_scoring_enabled": credit_map is not None or bool(question_component_policy),
         "question_component_policy": question_component_policy,
         "component_scoring_enabled": bool(question_component_policy),
+        "best_question_count": best_question_count,
         "mark_allocation": mark_allocation, "teacher_approval_required": teacher_approval_required,
         "raw_text": raw_text, "warnings": warnings,
     }

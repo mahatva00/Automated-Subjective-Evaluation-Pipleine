@@ -1,8 +1,9 @@
 """Map statically parsed submission segments to question-paper questions.
 
 This module only reads JSON and text. It never imports or executes submitted code.
-It uses generic numbered-question anchors and document order; uncertain/unanchored
-content is retained as unassigned evidence rather than guessed into a question.
+It uses generic numbered-question anchors, notebook document order, and page-local
+PDF continuation in document order; content before the first question anchor remains
+unassigned.
 """
 from __future__ import annotations
 
@@ -23,6 +24,10 @@ NUMERIC_HEADING_RE = re.compile(
 )
 PAREN_QUESTION_RE = re.compile(
     r"^\s*(?:#{1,6}\s*)?\((?P<number>\d{1,3})\)\s+(?P<title>\S.*)$"
+)
+NUMBERED_SUBPART_HEADING_RE = re.compile(
+    r"^\s*(?P<number>\d{1,3})\s+(?P<subpart>[a-z])\s*$",
+    re.IGNORECASE,
 )
 SUBPART_RE = re.compile(
     r"(?im)^\s*(?:#{1,6}\s*)?(?:\((?P<paren>[a-z])\)|(?P<plain>[a-z])[.)])\s+"
@@ -256,6 +261,11 @@ def _question_inventory(question_map: dict[str, Any]) -> list[dict[str, Any]]:
             "source_kind": "question",
             "source_text": str(entry.get("text", "")),
             "source_pages": entry.get("source_pages", []),
+            "subpart_labels": {
+                str(part.get("label") or "").casefold()
+                for part in entry.get("subparts", []) or []
+                if isinstance(part, dict) and part.get("label") is not None
+            },
         })
     for entry in question_map.get("standalone_tasks", []) or []:
         if not isinstance(entry, dict):
@@ -293,6 +303,7 @@ def _heading(
     line: str,
     valid_numbers: set[str],
     question_titles: dict[str, str] | None = None,
+    question_subparts: dict[str, set[str]] | None = None,
 ) -> tuple[str, str] | None:
     # Compact names such as `q1 = df.quantile(...)` are common in code and can
     # also appear in OCR text. They are assignments, not question headings.
@@ -317,6 +328,15 @@ def _heading(
                     ):
                         continue
                 return number, title
+    numbered_subpart = NUMBERED_SUBPART_HEADING_RE.fullmatch(line)
+    if numbered_subpart:
+        number = numbered_subpart.group("number")
+        subpart = numbered_subpart.group("subpart").casefold()
+        if (
+            number in valid_numbers
+            and subpart in (question_subparts or {}).get(number, set())
+        ):
+            return number, f"subquestion {subpart}"
     compact = re.match(
         r"^\s*(?P<number>\d{1,3})[.)\-:]\s*(?P<title>[A-Za-z][^:]{2,}?)[\s:]*$",
         line,
@@ -337,6 +357,7 @@ def _split_segment(
     segment: Segment,
     valid_numbers: set[str],
     question_titles: dict[str, str] | None = None,
+    question_subparts: dict[str, set[str]] | None = None,
 ) -> list[dict[str, Any]]:
     """Split prose/page segments at recognizable top-level question headings.
 
@@ -350,7 +371,7 @@ def _split_segment(
     offset = 0
     for line in lines:
         match = None if _is_code_segment(segment.segment_type) else _heading(
-            line.rstrip("\r\n"), valid_numbers, question_titles
+            line.rstrip("\r\n"), valid_numbers, question_titles, question_subparts
         )
         if match:
             boundaries.append((offset, match[0], match[1]))
@@ -933,6 +954,13 @@ def build_evidence_map(question_map: dict[str, Any], requirements: dict[str, Any
         for q in inventory
         if q.get("number") is not None and number_counts.get(q.get("number")) == 1
     }
+    question_subparts = {
+        str(q["number"]): q["subpart_labels"]
+        for q in inventory
+        if q.get("number") is not None
+        and number_counts.get(q.get("number")) == 1
+        and q.get("subpart_labels")
+    }
     notebook_blocks = (
         _notebook_component_blocks(submission_payload)
         if isinstance(submission_payload, dict)
@@ -946,7 +974,9 @@ def build_evidence_map(question_map: dict[str, Any], requirements: dict[str, Any
         segments = extract_submission_segments(submission_payload, submission_filename)
         all_blocks = []
         for seg in segments:
-            for block in _split_segment(seg, valid_numbers, question_titles):
+            for block in _split_segment(
+                seg, valid_numbers, question_titles, question_subparts
+            ):
                 all_blocks.extend(_pdf_component_blocks(block))
 
     by_number: dict[str, list[int]] = {}
@@ -965,7 +995,8 @@ def build_evidence_map(question_map: dict[str, Any], requirements: dict[str, Any
         title = block.pop("heading_title")
         if number is not None:
             choices = by_number.get(number, [])
-            if notebook_blocks and len(choices) == 1:
+            is_subpart_anchor = title.startswith("subquestion ")
+            if (notebook_blocks or is_subpart_anchor) and len(choices) == 1:
                 selected_index = choices[0]
             else:
                 forward = [idx for idx in choices if idx > last_explicit_index]
@@ -987,15 +1018,22 @@ def build_evidence_map(question_map: dict[str, Any], requirements: dict[str, Any
                 continue
             current_index = selected_index
             last_explicit_index = max(last_explicit_index, selected_index)
-            occurrence_cursor[number] = occurrence_cursor.get(number, 0) + 1
+            if not is_subpart_anchor:
+                occurrence_cursor[number] = occurrence_cursor.get(number, 0) + 1
             q = inventory[selected_index]
             block["mapping_method"] = (
                 "explicit_question_component_number"
                 if notebook_blocks
+                else "explicit_question_subpart_anchor"
+                if is_subpart_anchor
                 else "explicit_question_heading"
             )
             block["mapping_confidence"] = 1.0 if len(choices) == 1 else 0.75
-            block["mapping_status"] = "mapped" if len(choices) == 1 else "mapped_repeated_number_review"
+            block["mapping_status"] = (
+                "mapped"
+                if len(choices) == 1 or is_subpart_anchor
+                else "mapped_repeated_number_review"
+            )
             block["heading_number"] = number
             block["heading_title"] = title
             assigned_blocks[q["question_id"]].append(block)
@@ -1052,7 +1090,7 @@ def build_evidence_map(question_map: dict[str, Any], requirements: dict[str, Any
         "mapping_method": (
             "notebook_explicit_question_component_blocks"
             if notebook_blocks
-            else "generic_explicit_question_anchors_plus_document_order"
+            else "generic_explicit_question_anchors_with_document_order_continuations"
         ),
         "student_code_executed": False,
         "source_submission_filename": submission_filename,

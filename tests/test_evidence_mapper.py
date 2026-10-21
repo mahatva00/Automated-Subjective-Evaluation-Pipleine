@@ -125,6 +125,56 @@ class EvidenceMapperTests(unittest.TestCase):
         self.assertEqual(output["summary"]["unassigned_blocks"], 1)
         self.assertTrue(all(q["mapping_status"] == "no_evidence_found" for q in output["questions"]))
 
+    def test_pdf_continuation_inherits_previous_anchor_until_next_question(self):
+        submission = {"segments": [
+            {
+                "segment_id": "cover",
+                "position": 0,
+                "original_type": "pdf_page",
+                "content": "Student name and declaration.",
+            },
+            {
+                "segment_id": "page_1",
+                "position": 1,
+                "original_type": "pdf_page",
+                "content": "1. Data preparation\nAnswer to question 1.",
+            },
+            {
+                "segment_id": "page_2",
+                "position": 2,
+                "original_type": "pdf_page",
+                "content": "Continuation without an explicit question heading.",
+            },
+            {
+                "segment_id": "page_3",
+                "position": 3,
+                "original_type": "pdf_page",
+                "content": "2. Query design\nAnswer to question 2.",
+            },
+        ]}
+        output = build_evidence_map(self.qmap, self.reqs, submission, "student.pdf.json")
+
+        self.assertEqual(output["summary"]["mapped_blocks"], 3)
+        self.assertEqual(output["summary"]["unassigned_blocks"], 1)
+        self.assertEqual(
+            [block["segment_id"] for block in output["questions"][0]["evidence_blocks"]],
+            ["page_1", "page_2"],
+        )
+        self.assertEqual(
+            [block["segment_id"] for block in output["questions"][1]["evidence_blocks"]],
+            ["page_3"],
+        )
+        unassigned = output["unassigned_evidence_blocks"][0]
+        self.assertEqual(unassigned["segment_id"], "cover")
+        self.assertEqual(unassigned["mapping_method"], "no_question_anchor")
+        continuation = output["questions"][0]["evidence_blocks"][1]
+        self.assertEqual(continuation["mapping_method"], "follows_explicit_question_heading")
+        self.assertEqual(continuation["mapping_status"], "mapped_by_document_order")
+        self.assertEqual(
+            output["mapping_method"],
+            "generic_explicit_question_anchors_with_document_order_continuations",
+        )
+
     def test_source_cell_is_never_executed_and_retains_code(self):
         marker = "raise RuntimeError('must not run')"
         submission = {"cells": [{"cell_id": "code1", "cell_index": 0, "cell_type": "markdown", "source": "Question 1: Data preparation"}, {"cell_id": "code2", "cell_index": 1, "cell_type": "code", "source": marker}]}

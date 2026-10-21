@@ -1,6 +1,6 @@
 # Teacher Assessment Pipeline v1 — integration status
 
-**Status:** implemented as a development patch; not yet installed or exercised against a real teacher input folder on the user's Windows environment.
+**Status:** implemented in the repository. The current Windows source tree passes all 271 `unittest` tests, including the numeric-scoring, provider-throttling, human-benchmark, and interactive-review changes. Historical real assignment runs exercised the pipeline, but LLM assessment quality and scores remain review-dependent; this is not a production certification.
 
 ## What it runs
 
@@ -13,10 +13,35 @@
 5. Optionally classify those candidates with the configured, already-trained DistilBERT role model. Predictions remain advisory metadata; they never delete or approve requirements and do not discover new boundaries.
 6. Normalize the policy from JSON, TXT, Markdown, PDF, or DOCX.
 7. Parse student notebooks/PDFs using the existing ingestion modules without executing student code. Notebook parsing and notebook-export PDF mapping preserve question-scoped component blocks: `question`, `code`, `output`, `explanation`, and `ai_log`.
-8. Build evidence maps through `src.evaluation.evidence_mapper.build_evidence_map`. Component blocks are mapped by explicit question numbers, compact known question headings are accepted, and numbered prose is not treated as a question heading unless its title matches the question paper. Each question records missing scored components (`code`, `output`, or `explanation`). Atomic requirements receive code-only links based on their subquestion anchor and code concepts; output, explanation, question-copy, and AI-log blocks are retained for component-presence reporting but are not requirement evidence links. AI-log blocks are kept separate and are not scored.
-9. Evaluate requirement evidence via the existing static answer evaluator and configured provider.
+8. Build evidence maps through `src.evaluation.evidence_mapper.build_evidence_map`. Component blocks are mapped by explicit question numbers, compact known question headings are accepted, and numbered prose is not treated as a question heading unless its title matches the question paper. On PDFs, content after an explicit question heading inherits that question in document order until another recognized question heading; content before the first recognized heading remains unassigned and visible in the student report footer. Inherited blocks are marked as document-order mappings. Notebook cells continue to follow explicit notebook question headings. Each question records missing scored components (`code`, `output`, or `explanation`). Atomic requirements receive code-only links based on their subquestion anchor and code concepts; output, explanation, question-copy, and AI-log blocks are retained for component-presence reporting but are not requirement evidence links. AI-log blocks are kept separate and are not scored.
+9. Evaluate requirement evidence via the existing static answer evaluator and configured provider. The configured batch-size default remains 4; on explicit user decision, it is unchanged pending more varied benchmark samples. When Ollama explicitly reports an empty or truncated response for a multi-requirement batch, the evaluator retries only that failed batch one requirement at a time. HTTP 429/503 throttling is retried up to six times, honoring `Retry-After` or using exponential delays; permanent quota errors are surfaced immediately. If the provider remains throttled, later student provider calls are paused so the run does not amplify the limit. Earlier successful batches remain checkpointed for `--resume-run`; other provider/network errors are not converted into fallback success.
 10. Audit evaluation IDs/statuses/exact evidence quotes with `scripts.audit_static_evaluations.audit`.
-11. Calculate a conservative requirement-level score only when a numeric policy credit map and defensible mark allocation are available. Component-policy scoring is available through `score_component_evaluation` and uses the explicit per-question component allocations; missing components receive zero allocation for that component and `needs_review` remains provisional.
+11. Audit successful evaluations, then calculate scores from explicit per-question component allocations when available. Within each question, each requirement has equal weight; `complete`, `partial`, and `absent` contribute 100%, 70%, and 0%, respectively. Each question's normalized requirement average is applied to its explicit Code/Explanation/Output mark allocation. An explicit “best N questions” policy selects the top N by awarded marks. Unresolved `needs_review` statuses are preserved as the raw model result, initialize to provisional `partial`, and can be changed by a teacher in the HTML report. The report updates the score and exports the reviewed JSON; no official grade is issued.
+
+## Rate-limit recovery and human evaluator benchmark
+
+Provider requests are serial in the assessment runner. A 429/503 response honors `Retry-After` when supplied, otherwise it uses exponential backoff; automatic waits above 120 seconds and exhausted/daily quotas stop provider work. The current student checkpoint is retained, and subsequent students are marked skipped after a throttling failure. Resume later with the same provider/model and `--resume-run`; already completed requirements are reused. API keys belong in environment variables such as `GROQ_API_KEY` or `GEMINI_API_KEY`, never in source files or review artifacts.
+
+To prepare a blinded 30-item reference sample from a completed run without making provider calls:
+
+```powershell
+python scripts\evaluator_human_benchmark.py prepare `
+  --run-dir "D:\path\to\completed-run" `
+  --output-dir "D:\path\to\completed-run\human_benchmark" `
+  --sample-size 30 `
+  --seed 42 `
+  --exclude-submission-token 1063
+```
+
+The generated TSV contains the requirement, frozen evidence, and blank `human_status`/`human_rationale` columns, but not the model's judgment. Keep the separate `evaluator-human-review-key.json` closed until all labels are entered. Use only `complete`, `partial`, `absent`, or `needs_review`; assess the same static evidence and never execute student code. Then compare:
+
+```powershell
+python scripts\evaluator_human_benchmark.py compare `
+  --labels-tsv "D:\path\to\human_benchmark\evaluator-human-review.tsv" `
+  --key-json "D:\path\to\human_benchmark\evaluator-human-review-key.json"
+```
+
+The report includes exact agreement, per-status precision/recall/F1, a confusion matrix, and disagreement rationales. The tool checks evidence-map hashes and reconstructs the exact selected evidence block IDs before preparing labels. This small sample is diagnostic only, not an accuracy certification.
 
 The semantic/structure proposal generators are a development-time annotation/training workflow, not a required step for each live student assessment. Their outputs remain reproducible through `tools/automated_corpus_completion_v1/scripts/run_full_batch.py`.
 
@@ -64,9 +89,9 @@ For numeric scores, the policy must explicitly provide `complete`, `partial`, an
 }
 ```
 
-Plain-text policies can use explicit numeric factors such as `complete: 100%; partial: 50%; absent: 0%`. The parser will not infer partial-credit fractions from a statement such as “be lenient”. If the mapping is missing, the pipeline still emits the static evaluation report, but numeric scoring remains disabled.
+Plain-text policies can use explicit numeric factors such as `complete: 100%; partial: 50%; absent: 0%`. The parser will not infer partial-credit fractions from a statement such as “be lenient”. If neither these factors nor complete per-question component allocations are available, the pipeline still emits the static evaluation report, but numeric scoring remains disabled.
 
-Markdown policies may also declare per-question component allocations, for example `Q1 ... [10 marks]` followed by `Split: Code 50%, Explanation 25%, Output 25%`. These are normalized under `question_component_policy`, including explicit sub-question marks when the policy provides them. Component scoring applies complete/partial/absent as 100/50/0 and does not treat AI-log evidence as explanation evidence.
+Markdown policies may also declare per-question component allocations, for example `Q1 ... [10 marks]` followed by `Split: Code 50%, Explanation 25%, Output 25%`. These are normalized under `question_component_policy`, including explicit sub-question marks when the policy provides them. Requirement aggregation uses an equal-weight mean within each question because no reliable requirement-to-component/subtask mark mapping is inferred. Component allocations distribute the resulting question score across Code/Explanation/Output according to the policy percentages; they do not claim that a particular requirement maps to one component. The current approved status factors are complete/partial/absent = 100/70/0. A policy statement like `Best five questions are counted` is recognized as an explicit best-question rule. The interactive report keeps raw `status` unchanged, defaults unresolved items to `partial`, and allows teachers to select a `final_status` and download updated JSON. Scores remain provisional and are not official grades. AI-log evidence is not scored.
 
 When multiple atomic requirements share a marked source node, that node's marks are split evenly between them so the same marks are not duplicated. Alternative-answer groups and missing mark allocations are flagged; unsupported cases do not receive a purported final grade. `final_grade` remains `null`; a numeric result is provisional and requires teacher approval.
 

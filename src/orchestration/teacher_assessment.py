@@ -14,10 +14,16 @@ from typing import Any, Callable
 from src.ingestion import pdf_parser, notebook_parser, question_parser
 from src.requirements.requirement_extractor import extract_atomic_requirements
 from src.evaluation.evidence_mapper import build_evidence_map
-from src.evaluation.static_answer_evaluator import GeminiClient, GroqClient, OllamaClient, evaluate_evidence_map
+from src.evaluation.static_answer_evaluator import (
+    GeminiClient,
+    GroqClient,
+    OllamaClient,
+    ProviderRateLimitError,
+    evaluate_evidence_map,
+)
 from src.policy.policy_parser import parse_assessment_policy
-from src.evaluation.grading_engine import score_evaluation
-from src.reporting.student_report import build_student_report, write_student_report
+from src.evaluation.grading_engine import score_evaluation, score_question_statuses
+from src.reporting.student_report import build_student_report, evaluation_rows, write_student_report
 from scripts.audit_static_evaluations import audit as audit_static_evaluation
 
 PDF_SUFFIX = ".pdf"
@@ -385,6 +391,7 @@ def run_teacher_assessment(input_dir: str | Path, output_dir: str | Path | None 
         warnings.append(f"Could not initialize evaluation provider: {type(exc).__name__}: {exc}")
 
     submission_results = []
+    provider_rate_limit_pause: str | None = None
     for index, submission_path in enumerate(discovered["submissions"], start=1):
         relative = _relative_output_name(submission_path, root)
         rel_stem = relative.with_suffix("").as_posix()
@@ -441,6 +448,21 @@ def run_teacher_assessment(input_dir: str | Path, output_dir: str | Path | None 
         evaluation_error = None
         if client is None:
             evaluation_error = "Evaluation provider client could not be initialized."
+        elif provider_rate_limit_pause is not None:
+            evaluation_error = (
+                "Provider requests were paused after an earlier rate-limit failure: "
+                + provider_rate_limit_pause
+            )
+            per_student_warnings.append(evaluation_error)
+            with log_path.open("a", encoding="utf-8") as log:
+                log.write(f"SKIPPED: {evaluation_error}\n")
+            stages.append({
+                "stage": "static_answer_evaluation",
+                "submission": submission_path.name,
+                "status": "skipped_rate_limited",
+                "error": evaluation_error,
+                "log": str(log_path),
+            })
         else:
             source_hash = hashlib.sha256(evidence_path.read_bytes()).hexdigest()
             checkpoint_model = str(client_model)
@@ -464,6 +486,25 @@ def run_teacher_assessment(input_dir: str | Path, output_dir: str | Path | None 
                 write_json(eval_path, evaluation)
                 stages.append({"stage": "static_answer_evaluation", "submission": submission_path.name, "status": "completed",
                                "summary": evaluation.get("summary"), "output": str(eval_path), "checkpoint": str(checkpoint_path), "log": str(log_path)})
+            except ProviderRateLimitError as exc:
+                provider_rate_limit_pause = str(exc)
+                evaluation_error = f"{type(exc).__name__}: {exc}"
+                rate_limit_warning = (
+                    "Provider evaluation paused after rate-limit retries were exhausted. "
+                    "Completed requirements remain checkpointed; resume the run later."
+                )
+                warnings.append(rate_limit_warning)
+                per_student_warnings.append(rate_limit_warning)
+                with log_path.open("a", encoding="utf-8") as log:
+                    log.write(f"RATE_LIMIT_PAUSE: {evaluation_error}\n")
+                stages.append({
+                    "stage": "static_answer_evaluation",
+                    "submission": submission_path.name,
+                    "status": "paused_rate_limited",
+                    "error": evaluation_error,
+                    "checkpoint": str(checkpoint_path) if checkpoint_path.exists() else None,
+                    "log": str(log_path),
+                })
             except Exception as exc:
                 evaluation_error = f"{type(exc).__name__}: {exc}"
                 per_student_warnings.append(f"Static answer evaluation failed: {evaluation_error}")
@@ -480,7 +521,10 @@ def run_teacher_assessment(input_dir: str | Path, output_dir: str | Path | None 
                            "status": "passed" if audit_result.get("passed") else "failed",
                            "error_count": len(audit_result.get("errors", [])), "output": str(audit_path)})
             if audit_result.get("passed"):
-                scoring = score_evaluation(evaluation, mapping_requirements, policy)
+                if policy.get("component_scoring_enabled"):
+                    scoring = score_question_statuses(evaluation_rows(evaluation), policy)
+                else:
+                    scoring = score_evaluation(evaluation, mapping_requirements, policy)
             else:
                 audit_message = f"Independent evaluation audit failed for {submission_path.name}; numeric scoring was skipped."
                 warnings.append(audit_message)
@@ -502,6 +546,9 @@ def run_teacher_assessment(input_dir: str | Path, output_dir: str | Path | None 
         submission_results.append({"student": sub_meta, "status": "completed" if evaluation is not None else "evaluation_failed",
                                    "evidence_map": str(evidence_path), "evaluation": str(eval_path) if evaluation is not None else None,
                                    "score_status": (scoring or {}).get("score_status", "not_scored"),
+                                   "score": (scoring or {}).get("score"),
+                                   "max_marks": (scoring or {}).get("max_marks"),
+                                   "percentage": (scoring or {}).get("percentage"),
                                    "report_json": str(jpath), "report_html": str(hpath), "error": evaluation_error})
 
     input_files = input_files_snapshot
@@ -535,15 +582,29 @@ def run_teacher_assessment(input_dir: str | Path, output_dir: str | Path | None 
 def _write_batch_html(path: Path, report: dict[str, Any]) -> None:
     import html
     entries = []
+    run_dir = Path(report.get("run_dir") or ".")
     for row in report.get("student_results", []) or []:
         student = row.get("student", {}) or {}
         title = html.escape(str(student.get("student_roll_no") or student.get("source_filename") or "Student"))
         status = html.escape(str(row.get("status")))
-        report_rel = html.escape(str(Path(row.get("report_html", "")).name))
-        entries.append(f"<tr><td>{title}</td><td>{status}</td><td>{html.escape(str(row.get('score_status')))}</td><td><code>{report_rel}</code></td></tr>")
+        report_path = Path(row.get("report_html") or "")
+        try:
+            report_relative = report_path.relative_to(run_dir)
+        except ValueError:
+            report_relative = Path("reports") / report_path.name
+        report_rel = html.escape(report_relative.as_posix())
+        score = row.get("score")
+        max_marks = row.get("max_marks")
+        points = f"{score} / {max_marks}" if score is not None and max_marks is not None else "Not scored"
+        percentage = f"{row['percentage']}%" if row.get("percentage") is not None else "—"
+        entries.append(
+            f"<tr><td>{title}</td><td>{status}</td><td>{html.escape(str(row.get('score_status')))}</td>"
+            f"<td>{html.escape(points)}</td><td>{html.escape(percentage)}</td>"
+            f"<td><a href=\"{report_rel}\">Review report</a></td></tr>"
+        )
     warns = "".join(f"<li>{html.escape(str(w))}</li>" for w in report.get("warnings", []) or []) or "<li>None recorded.</li>"
     summary = report.get("summary", {})
-    content = f"""<!doctype html><html><head><meta charset=\"utf-8\"><title>Assessment batch summary</title><style>body{{font-family:Arial,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem}}table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #bbb;padding:.6rem;text-align:left}}th{{background:#f2f2f2}}</style></head><body><h1>Assessment batch summary</h1><p><b>Run:</b> {html.escape(str(report.get('run_id')))}</p><p><b>Status:</b> {html.escape(str(report.get('pipeline_status')))}</p><p><b>Question paper:</b> {html.escape(str((report.get('discovered') or {}).get('question_paper')))}</p><p><b>Students discovered:</b> {summary.get('students_discovered',0)}; assessed: {summary.get('students_assessed',0)}; failed/partial: {summary.get('students_failed_or_partial',0)}</p><div style=\"padding:.8rem;border-left:4px solid #a67c00;background:#fff8df\">Static inspection only: student code was not executed. Numeric scores may be provisional or unavailable. No official grades were issued.</div><h2>Student reports</h2><table><thead><tr><th>Student</th><th>Status</th><th>Scoring</th><th>Report file</th></tr></thead><tbody>{''.join(entries)}</tbody></table><h2>Warnings</h2><ul>{warns}</ul></body></html>"""
+    content = f"""<!doctype html><html><head><meta charset=\"utf-8\"><title>Assessment batch summary</title><style>body{{font-family:Arial,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem}}table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #bbb;padding:.6rem;text-align:left}}th{{background:#f2f2f2}}</style></head><body><h1>Assessment batch summary</h1><p><b>Run:</b> {html.escape(str(report.get('run_id')))}</p><p><b>Status:</b> {html.escape(str(report.get('pipeline_status')))}</p><p><b>Question paper:</b> {html.escape(str((report.get('discovered') or {}).get('question_paper')))}</p><p><b>Students discovered:</b> {summary.get('students_discovered',0)}; assessed: {summary.get('students_assessed',0)}; failed/partial: {summary.get('students_failed_or_partial',0)}</p><div style=\"padding:.8rem;border-left:4px solid #a67c00;background:#fff8df\">Static inspection only: student code was not executed. Numeric scores may be provisional or unavailable. No official grades were issued.</div><h2>Student reports</h2><table><thead><tr><th>Student</th><th>Status</th><th>Scoring</th><th>Provisional points</th><th>Percentage</th><th>Review report</th></tr></thead><tbody>{''.join(entries)}</tbody></table><h2>Warnings</h2><ul>{warns}</ul></body></html>"""
     write_text = content
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(write_text, encoding="utf-8")

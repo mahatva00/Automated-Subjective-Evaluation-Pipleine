@@ -14,9 +14,17 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter
+from datetime import timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, Callable, Iterable
 
 VALID_STATUSES = {"complete", "partial", "absent", "needs_review"}
+RATE_LIMIT_RETRIES = 6
+MAX_AUTOMATIC_RETRY_WAIT_SECONDS = 120.0
+
+
+class ProviderRateLimitError(RuntimeError):
+    """Provider throttling exhausted retries; caller should pause provider work."""
 STOP_WORDS = {
     "the", "and", "for", "from", "with", "that", "this", "into", "each", "your",
     "you", "are", "was", "were", "has", "have", "had", "all", "any", "not", "will",
@@ -54,6 +62,39 @@ If the evidence does not prove correctness, explain this limitation. Return ONLY
 "rationale":"brief reason","confidence":0.0,"evidence_sufficient":false,
 "evidence":[{"block_id":"...","quote":"exact text copied from the block","purpose":"why it supports the assessment"}]}]}
 """
+
+
+def _rate_limit_retry_delay(
+    headers: Any,
+    detail: str,
+    attempt: int,
+) -> float | None:
+    """Calculate a bounded exponential retry delay, honoring Retry-After when present."""
+    lowered = detail.casefold()
+    if any(term in lowered for term in ("tokens per day", "daily quota", "quota exceeded", "per day limit")):
+        return None
+    retry_after = (headers or {}).get("retry-after") or (headers or {}).get("Retry-After")
+    if retry_after:
+        try:
+            return max(1.0, float(retry_after) + 0.5)
+        except (TypeError, ValueError):
+            try:
+                retry_time = parsedate_to_datetime(str(retry_after))
+                if retry_time.tzinfo is None:
+                    retry_time = retry_time.replace(tzinfo=timezone.utc)
+                return max(1.0, retry_time.timestamp() - time.time() + 0.5)
+            except (TypeError, ValueError, OverflowError):
+                pass
+    match = re.search(r"try again in\s*(\d+(?:\.\d+)?)\s*s", detail, re.IGNORECASE)
+    if match:
+        return max(1.0, float(match.group(1)) + 0.5)
+    if "rate limit" in lowered or "too many requests" in lowered or "tokens per minute" in lowered or "(tpm)" in lowered:
+        return min(60.0, float(2 ** min(max(attempt - 1, 0), 6)))
+    return None
+
+
+def _should_retry_http_status(status_code: int) -> bool:
+    return status_code in {429, 503}
 
 TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]*|\d+(?:\.\d+)?")
 VISUAL_REQUIREMENT_RE = re.compile(
@@ -513,6 +554,10 @@ def normalize_llm_json(content: str) -> dict[str, Any]:
     return parsed
 
 
+class IncompleteModelResponseError(RuntimeError):
+    """Raised when a provider explicitly reports that its response was cut off."""
+
+
 def normalize_assessment_response(
     raw_response: dict[str, Any] | None,
     expected_requirement_ids: Iterable[str],
@@ -675,24 +720,51 @@ class OllamaClient:
             method="POST",
         )
         started = time.perf_counter()
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                data = json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:1500]
-            raise RuntimeError(f"Ollama returned HTTP {exc.code} for model {self.model}: {detail}") from exc
-        except (urllib.error.URLError, TimeoutError) as exc:
-            raise RuntimeError(
-                f"Ollama request to {self.base_url} failed or timed out after {self.timeout}s. "
-                f"Ensure the model '{self.model}' is available and Ollama is responsive. Details: {exc}"
-            ) from exc
+        data = None
+        for attempt in range(RATE_LIMIT_RETRIES + 1):
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                break
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")[:1500]
+                if _should_retry_http_status(exc.code):
+                    retry_detail = f"rate limit: {detail}"
+                    delay = _rate_limit_retry_delay(exc.headers, retry_detail, attempt + 1)
+                    if delay is not None and attempt < RATE_LIMIT_RETRIES:
+                        if delay > MAX_AUTOMATIC_RETRY_WAIT_SECONDS:
+                            raise ProviderRateLimitError(
+                                f"Ollama requested a {delay:.1f}s rate-limit wait, exceeding the "
+                                f"{MAX_AUTOMATIC_RETRY_WAIT_SECONDS:.0f}s automatic limit. "
+                                "Stop and resume the run later; completed batches remain checkpointed."
+                            ) from exc
+                        print(
+                            f"Ollama rate limit/server busy; retry {attempt + 1}/{RATE_LIMIT_RETRIES} "
+                            f"in {delay:.1f}s. Completed batches remain checkpointed.",
+                            flush=True,
+                        )
+                        time.sleep(delay)
+                        continue
+                if exc.code in {429, 503}:
+                    raise ProviderRateLimitError(
+                        f"Ollama returned HTTP {exc.code} after rate-limit retries or due to a non-temporary quota limit. "
+                        "Completed batches remain checkpointed; resume later. Details: " + detail
+                    ) from exc
+                raise RuntimeError(f"Ollama returned HTTP {exc.code} for model {self.model}: {detail}") from exc
+            except (urllib.error.URLError, TimeoutError) as exc:
+                raise RuntimeError(
+                    f"Ollama request to {self.base_url} failed or timed out after {self.timeout}s. "
+                    f"Ensure the model '{self.model}' is available and Ollama is responsive. Details: {exc}"
+                ) from exc
+        if data is None:
+            raise RuntimeError("Ollama request ended without a response after rate-limit retries.")
         elapsed = time.perf_counter() - started
         try:
             content = data["message"]["content"]
         except (KeyError, TypeError) as exc:
             raise RuntimeError("Ollama response did not contain message.content") from exc
         if not isinstance(content, str) or not content.strip():
-            raise RuntimeError(
+            raise IncompleteModelResponseError(
                 "Ollama returned empty message.content. "
                 f"Response keys={sorted(data.keys())}; done_reason={data.get('done_reason')!r}; "
                 f"eval_count={data.get('eval_count')!r}. Try a smaller batch or larger OLLAMA_NUM_PREDICT."
@@ -701,16 +773,16 @@ class OllamaClient:
         output_tokens = data.get("eval_count")
         server_duration = data.get("total_duration")
         duration_text = f"{server_duration / 1_000_000_000:.1f}s server time" if isinstance(server_duration, (int, float)) else f"{elapsed:.1f}s elapsed"
+        if data.get("done") is False or data.get("done_reason") == "length":
+            raise IncompleteModelResponseError(
+                "Ollama stopped before completing the response (likely num_predict limit). "
+                "Use a smaller batch or raise OLLAMA_NUM_PREDICT; completed earlier batches remain checkpointed."
+            )
         print(
             f"Ollama request completed in {duration_text}; prompt tokens={prompt_tokens if prompt_tokens is not None else '?'}; "
             f"generated tokens={output_tokens if output_tokens is not None else '?'}; model={self.model}",
             flush=True,
         )
-        if data.get("done") is False or data.get("done_reason") == "length":
-            raise RuntimeError(
-                "Ollama stopped before completing the response (likely num_predict limit). "
-                "Use a smaller batch or raise OLLAMA_NUM_PREDICT; completed earlier batches remain checkpointed."
-            )
         return normalize_llm_json(content)
 
 
@@ -765,17 +837,41 @@ class GeminiClient:
             headers={"Content-Type": "application/json", "x-goog-api-key": self.api_key},
             method="POST",
         )
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                data = json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
+        data = None
+        for attempt in range(RATE_LIMIT_RETRIES + 1):
             try:
+                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                break
+            except urllib.error.HTTPError as exc:
                 detail = exc.read().decode("utf-8", errors="replace")[:2000]
-            except Exception:
-                detail = str(exc)
-            raise RuntimeError(f"Gemini API returned HTTP {exc.code}: {detail}") from exc
-        except (urllib.error.URLError, TimeoutError) as exc:
-            raise RuntimeError(f"Gemini API request failed or timed out after {self.timeout}s: {exc}") from exc
+                if _should_retry_http_status(exc.code):
+                    retry_detail = f"rate limit: {detail}"
+                    delay = _rate_limit_retry_delay(exc.headers, retry_detail, attempt + 1)
+                    if delay is not None and attempt < RATE_LIMIT_RETRIES:
+                        if delay > MAX_AUTOMATIC_RETRY_WAIT_SECONDS:
+                            raise ProviderRateLimitError(
+                                f"Gemini requested a {delay:.1f}s rate-limit wait, exceeding the "
+                                f"{MAX_AUTOMATIC_RETRY_WAIT_SECONDS:.0f}s automatic limit. "
+                                "Stop and resume the run later; completed batches remain checkpointed."
+                            ) from exc
+                        print(
+                            f"Gemini rate limit reached; retry {attempt + 1}/{RATE_LIMIT_RETRIES} "
+                            f"in {delay:.1f}s. Completed batches remain checkpointed.",
+                            flush=True,
+                        )
+                        time.sleep(delay)
+                        continue
+                if exc.code in {429, 503}:
+                    raise ProviderRateLimitError(
+                        f"Gemini API returned HTTP {exc.code} after rate-limit retries or due to a non-temporary quota limit. "
+                        "Completed batches remain checkpointed; resume later. Details: " + detail
+                    ) from exc
+                raise RuntimeError(f"Gemini API returned HTTP {exc.code}: {detail}") from exc
+            except (urllib.error.URLError, TimeoutError) as exc:
+                raise RuntimeError(f"Gemini API request failed or timed out after {self.timeout}s: {exc}") from exc
+        if data is None:
+            raise RuntimeError("Gemini request ended without a response after rate-limit retries.")
         # Interactions REST returns model output as text content in model_output steps.
         output_parts = []
         for step in data.get("steps", []) or []:
@@ -849,24 +945,9 @@ class GroqClient:
     @staticmethod
     def _retry_delay_for_rate_limit(exc: Exception, attempt: int) -> float | None:
         """Return a retry delay only for temporary rate limits, not exhausted daily quotas."""
-        detail = str(exc)
-        lowered = detail.lower()
-        if any(term in lowered for term in ("tokens per day", "daily quota", "quota exceeded", "per day limit")):
-            return None
         response = getattr(exc, "response", None)
         headers = getattr(response, "headers", {}) or {}
-        retry_after = headers.get("retry-after") or headers.get("Retry-After")
-        if retry_after:
-            try:
-                return max(1.0, min(60.0, float(retry_after) + 0.5))
-            except (TypeError, ValueError):
-                pass
-        match = re.search(r"try again in\s*(\d+(?:\.\d+)?)\s*s", detail, re.IGNORECASE)
-        if match:
-            return max(1.0, min(60.0, float(match.group(1)) + 0.5))
-        if "tokens per minute" in lowered or "(tpm)" in lowered:
-            return min(30.0, float(2 ** min(attempt, 5)))
-        return None
+        return _rate_limit_retry_delay(headers, f"rate limit: {exc}", attempt)
 
     def chat_json(self, user_payload: dict[str, Any]) -> dict[str, Any]:
         request_args = {
@@ -888,28 +969,33 @@ class GroqClient:
                 },
             },
         }
-        max_rate_limit_retries = 6
         response = None
-        for attempt in range(max_rate_limit_retries + 1):
+        for attempt in range(RATE_LIMIT_RETRIES + 1):
             try:
                 response = self._client.chat.completions.create(**request_args)
                 break
             except Exception as exc:
                 status_code = getattr(exc, "status_code", None)
                 detail = str(exc)[:2000]
-                if status_code == 429:
+                if status_code in {429, 503}:
                     delay = self._retry_delay_for_rate_limit(exc, attempt + 1)
-                    if delay is not None and attempt < max_rate_limit_retries:
+                    if delay is not None and attempt < RATE_LIMIT_RETRIES:
+                        if delay > MAX_AUTOMATIC_RETRY_WAIT_SECONDS:
+                            raise ProviderRateLimitError(
+                                f"Groq requested a {delay:.1f}s rate-limit wait, exceeding the "
+                                f"{MAX_AUTOMATIC_RETRY_WAIT_SECONDS:.0f}s automatic limit. "
+                                "Stop and resume the run later; completed batches remain checkpointed."
+                            ) from exc
                         print(
-                            f"Groq rate limit reached; retry {attempt + 1}/{max_rate_limit_retries} "
+                            f"Groq rate limit reached; retry {attempt + 1}/{RATE_LIMIT_RETRIES} "
                             f"in {delay:.1f}s. Completed batches remain checkpointed.",
                             flush=True,
                         )
                         time.sleep(delay)
                         continue
-                    raise RuntimeError(
-                        "Groq API returned HTTP 429 after automatic retries or due to a non-temporary quota limit. "
-                        "Completed batches remain checkpointed. Check Groq Console rate limits. Details: " + detail
+                    raise ProviderRateLimitError(
+                        f"Groq API returned HTTP {status_code} after rate-limit retries or due to a non-temporary quota limit. "
+                        "Completed batches remain checkpointed; resume later. Check Groq Console rate limits. Details: " + detail
                     ) from exc
                 if status_code == 403:
                     raise RuntimeError(
@@ -1040,6 +1126,38 @@ def validate_assessment(
 def _batches(items: list[dict[str, Any]], size: int) -> Iterable[list[dict[str, Any]]]:
     for i in range(0, len(items), size):
         yield items[i:i + size]
+
+
+def _request_assessment_batch(
+    client: Any,
+    payloads: list[dict[str, Any]],
+    before_request_callback: Callable[[int], None] | None,
+) -> dict[str, Any]:
+    """Fall back to one requirement per request after an explicit Ollama truncation."""
+    request_payload = {"requirements_to_assess": payloads}
+    if before_request_callback is not None:
+        before_request_callback(len(payloads))
+    try:
+        return client.chat_json(request_payload)
+    except IncompleteModelResponseError:
+        if len(payloads) == 1:
+            raise
+
+    print(
+        "Ollama response was incomplete; retrying this failed batch one requirement at a time.",
+        flush=True,
+    )
+    assessments = []
+    for payload in payloads:
+        if before_request_callback is not None:
+            before_request_callback(1)
+        response = client.chat_json({"requirements_to_assess": [payload]})
+        if isinstance(response, dict):
+            rows = response.get("assessments")
+            if isinstance(rows, list):
+                assessments.extend(rows)
+    return {"assessments": assessments}
+
 
 def _get_all_blocks(evidence_map: dict[str, Any]) -> list[dict[str, Any]]:
     blocks: list[dict[str, Any]] = []
@@ -1252,9 +1370,9 @@ def evaluate_evidence_map(
                     "evidence_blocks": selected,
                     "evidence_bundle": _bundle_summary(selected),
                 })
-            if before_request_callback is not None:
-                before_request_callback(len(batch))
-            raw_response = client.chat_json({"requirements_to_assess": batch_payloads})
+            raw_response = _request_assessment_batch(
+                client, batch_payloads, before_request_callback
+            )
             assessment_list = normalize_assessment_response(
                 raw_response,
                 [str(req.get("requirement_id") or "") for req in batch],
@@ -1311,9 +1429,9 @@ def evaluate_evidence_map(
                 "evidence_blocks": selected,
                 "evidence_bundle": _bundle_summary(selected),
             })
-        if before_request_callback is not None:
-            before_request_callback(len(batch))
-        raw_response = client.chat_json({"requirements_to_assess": payloads})
+        raw_response = _request_assessment_batch(
+            client, payloads, before_request_callback
+        )
         assessment_list = normalize_assessment_response(
             raw_response,
             [str(req.get("requirement_id") or "") for req in batch],

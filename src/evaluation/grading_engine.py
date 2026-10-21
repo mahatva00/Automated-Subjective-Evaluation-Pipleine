@@ -9,7 +9,8 @@ from typing import Any
 
 VALID_STATUSES = {"complete", "partial", "absent", "needs_review"}
 COMPONENTS = ("code", "explanation", "output")
-COMPONENT_CREDITS = {"complete": 1.0, "partial": 0.5, "absent": 0.0}
+STATUS_CREDITS = {"complete": 1.0, "partial": 0.7, "absent": 0.0}
+COMPONENT_CREDITS = STATUS_CREDITS
 
 
 def _all_evaluations(evaluation: dict[str, Any]) -> list[dict[str, Any]]:
@@ -193,6 +194,8 @@ def score_component_evaluation(
     if not isinstance(component_policy, dict) or not component_policy:
         result["notes"].append("Assessment policy does not provide per-question component weights.")
         return result
+
+
     if evaluation.get("student_code_executed") is not False:
         result["notes"].append("Static-only guardrail failed; numeric scoring disabled.")
         return result
@@ -281,5 +284,167 @@ def score_component_evaluation(
         "component_rows": rows,
         "pending_review_components": sum(row["status"] == "needs_review" for row in rows),
         "teacher_approval_required": bool(policy.get("teacher_approval_required", True)),
+    })
+    return result
+
+
+def score_question_statuses(
+    evaluations: list[dict[str, Any]],
+    policy: dict[str, Any],
+) -> dict[str, Any]:
+    """Aggregate final requirement statuses within questions, then apply policy marks."""
+    component_policy = policy.get("question_component_policy")
+    best_question_count = policy.get("best_question_count")
+    result: dict[str, Any] = {
+        "schema_version": "1.0",
+        "artifact_type": "question_aggregate_scoring_result",
+        "numeric_scoring_enabled": False,
+        "score_status": "not_scored",
+        "score": None,
+        "max_marks": None,
+        "percentage": None,
+        "status_credit_factors": dict(STATUS_CREDITS),
+        "best_question_count": best_question_count,
+        "per_question": [],
+        "notes": [],
+        "teacher_approval_required": True,
+        "final_grade": None,
+    }
+    if not isinstance(component_policy, dict) or not component_policy:
+        result["notes"].append("Assessment policy does not provide per-question component weights.")
+        return result
+    if isinstance(best_question_count, bool) or (
+        best_question_count is not None
+        and (
+            not isinstance(best_question_count, int)
+            or best_question_count < 1
+            or best_question_count > len(component_policy)
+        )
+    ):
+        result["notes"].append("Policy best-question count is invalid for the available question allocations.")
+        return result
+
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    invalid_rows = []
+    defaulted_rows = []
+    for row in evaluations:
+        if not isinstance(row, dict):
+            invalid_rows.append("non-object evaluation")
+            continue
+        question_number = row.get("question_number")
+        if question_number is None:
+            invalid_rows.append(str(row.get("requirement_id") or "evaluation without a question number"))
+            continue
+        raw_status = row.get("status") or "needs_review"
+        final_status = row.get("final_status")
+        if final_status is None and raw_status in STATUS_CREDITS:
+            final_status = raw_status
+        elif final_status is None and raw_status == "needs_review":
+            final_status = "partial"
+        if final_status not in STATUS_CREDITS:
+            invalid_rows.append(str(row.get("requirement_id") or question_number))
+            continue
+        normalized_row = dict(row)
+        normalized_row["final_status"] = final_status
+        grouped.setdefault(str(question_number), []).append(normalized_row)
+        if raw_status == "needs_review" and row.get("final_status_source") != "teacher_selected":
+            defaulted_rows.append(str(row.get("requirement_id") or question_number))
+
+    policy_questions = {str(key) for key in component_policy}
+    unexpected_questions = sorted(set(grouped) - policy_questions)
+    missing_questions = sorted(policy_questions - set(grouped))
+    if invalid_rows or unexpected_questions or missing_questions:
+        if invalid_rows:
+            result["notes"].append(
+                f"Invalid or unallocated final statuses prevent numeric scoring for {len(invalid_rows)} evaluation row(s)."
+            )
+        if unexpected_questions:
+            result["notes"].append(
+                f"Evaluations have no policy allocation for question(s) {unexpected_questions}."
+            )
+        if missing_questions:
+            result["notes"].append(
+                f"No evaluated requirements were found for policy question(s) {missing_questions}."
+            )
+        return result
+
+    question_rows = []
+    for question_number, allocation in component_policy.items():
+        if not isinstance(allocation, dict):
+            result["notes"].append(f"Invalid component policy for question Q{question_number}.")
+            return result
+        marks = allocation.get("marks")
+        weights = allocation.get("component_weights")
+        if (
+            isinstance(marks, bool)
+            or not isinstance(marks, (int, float))
+            or marks <= 0
+            or not isinstance(weights, dict)
+            or any(
+                component not in weights
+                or isinstance(weights[component], bool)
+                or not isinstance(weights[component], (int, float))
+                or float(weights[component]) < 0
+                for component in COMPONENTS
+            )
+            or abs(sum(float(weights[component]) for component in COMPONENTS) - 1.0) > 0.001
+        ):
+            result["notes"].append(f"Missing or invalid component mark allocation for question Q{question_number}.")
+            return result
+        rows = grouped[str(question_number)]
+        factor = sum(STATUS_CREDITS[row["final_status"]] for row in rows) / len(rows)
+        component_rows = []
+        question_score = 0.0
+        for component in COMPONENTS:
+            allocated = float(marks) * float(weights[component])
+            awarded = allocated * factor
+            question_score += awarded
+            component_rows.append({
+                "component": component,
+                "weight": float(weights[component]),
+                "max_marks": round(allocated, 3),
+                "score": round(awarded, 3),
+            })
+        question_rows.append({
+            "question_number": str(question_number),
+            "requirement_count": len(rows),
+            "normalized_status_factor": round(factor, 6),
+            "score": round(question_score, 3),
+            "max_marks": round(float(marks), 3),
+            "component_scores": component_rows,
+            "counted_in_final": False,
+        })
+
+    ranked = sorted(
+        question_rows,
+        key=lambda row: (
+            -row["score"],
+            not row["question_number"].isdigit(),
+            int(row["question_number"]) if row["question_number"].isdigit() else row["question_number"],
+        ),
+    )
+    counted_count = best_question_count or len(ranked)
+    counted_questions = {row["question_number"] for row in ranked[:counted_count]}
+    for row in question_rows:
+        row["counted_in_final"] = row["question_number"] in counted_questions
+    score = sum(row["score"] for row in question_rows if row["counted_in_final"])
+    max_marks = sum(row["max_marks"] for row in question_rows if row["counted_in_final"])
+    result.update({
+        "numeric_scoring_enabled": max_marks > 0,
+        "score_status": "provisional" if defaulted_rows else "ready_for_teacher_approval",
+        "score": round(score, 3),
+        "max_marks": round(max_marks, 3),
+        "percentage": round(score / max_marks * 100, 2) if max_marks else None,
+        "per_question": question_rows,
+        "defaulted_needs_review_count": len(defaulted_rows),
+        "teacher_approval_required": True,
+        "final_grade": None,
+        "aggregation_method": "equal_requirement_average_within_question_then_policy_component_weights",
+        "notes": [
+            "Within each question, requirement statuses are normalized by their equal-weight average and applied to that question's explicit component mark totals.",
+            f"The best {counted_count} question(s) are counted." if best_question_count else "All policy questions are counted.",
+            "Needs-review items default to partial (70%) until a teacher selects a final status." if defaulted_rows else "No defaulted needs-review items remain.",
+            "The result is provisional and is not an official grade; teacher approval is required.",
+        ],
     })
     return result

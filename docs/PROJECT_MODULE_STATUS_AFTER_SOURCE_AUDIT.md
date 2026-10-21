@@ -1,6 +1,6 @@
 # Project Module Status — source bundle audit
 
-**Audit basis:** `ine_source_bundle.zip` received 2026-10-14, plus the user's reported DistilBERT classification output. Status rows distinguish existing source modules from the new v1 patch (not yet installed into the user's Windows project as of this audit).
+**Historical snapshot (2026-10-14):** based on `ine_source_bundle.zip` and the user's reported DistilBERT classification output. Statements that the v1 patch was not installed describe the state at that audit date only; see `docs/TEACHER_ASSESSMENT_PIPELINE_V1.md` and the current source/tests for the repository status.
 
 ## Existing source modules and demonstrated capability
 
@@ -16,7 +16,7 @@
 | `src/annotation/coverage.py`, `src/annotation/token_dataset.py` | Tooling implemented; dataset readiness partial | Coverage, token windows, label masks and leakage checks exist; reviewed cross-domain coverage is incomplete. |
 | `scripts/train_distilbert_mvp.py` or bundled equivalent | Implemented and ran on user's Windows | Reported 0.8333 accuracy and 0.8413 macro-F1 on 12 validation examples from a narrow ML domain. No test set; do not claim generalized performance. |
 | `scripts/classify_requirement_candidates.py` and bundled equivalent | Implemented; standalone inference succeeded | User processed 11 requirement files / 912 candidates. Predicted roles: requirement 664, instruction/constraint 90, context/example 82, option/alternative 76. 909 rows were low-confidence at threshold 0.55; 3 rows needed candidate-role check. Confidence is uncalibrated. It does not discover new boundaries. |
-| `src/evaluation/evidence_mapper.py` | Implemented, limited | Assigns notebook/PDF evidence blocks to questions using explicit headings/document order and attaches requirements to questions. It does not materialize a fully adjudicated per-atomic-requirement evidence map independently. |
+| `src/evaluation/evidence_mapper.py` | Implemented, limited | Maps notebook and PDF evidence by explicit question headings and document order. PDF continuation pages inherit the most recent explicit question anchor until the next anchor; pre-anchor content remains unassigned and visible in the student report footer. Attaches requirements to questions but does not independently materialize a fully adjudicated per-atomic-requirement evidence map. |
 | `src/evaluation/static_answer_evaluator.py` | Implemented, limited / quality work needed | Evaluates each requirement against selected candidate evidence with Ollama/Groq/Gemini adapters and supports checkpoints. Prior audit noted many `needs_review` and incomplete-context outcomes. No marks are assigned by this module. |
 | `scripts/audit_static_evaluations.py` | Implemented | Checks requirement ID parity, statuses, evidence IDs/quotes, confidence, no-code-execution and no-grading flags. |
 | `scripts/batch_annotation_workflow.py` and `tools/automated_corpus_completion_v1/scripts/run_full_batch.py` | Implemented development workflow | Generates scope, structure and semantic proposal artifacts and review queues for the existing corpus. This is not the teacher-facing assessment runner. |
